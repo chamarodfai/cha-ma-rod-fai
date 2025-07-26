@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,36 +11,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ใช้ fetch API ที่ built-in ใน Node.js 18+
-    const BLOB_BASE_URL = 'https://mut17cdzoqscasrb.public.blob.vercel-storage.com';
-    const token = process.env.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_mut17CDZOqScasrB_4iG8G6bqfmR1TKGpfnhU29qhKf8O2J1';
+    // Supabase configuration
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mut17cdzoqscasrb.supabase.co';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseKey) {
+      return res.status(500).json({ 
+        error: 'Missing Supabase configuration',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     switch (req.method) {
       case 'GET':
         try {
-          // ลิสต์ blob files
-          const listResponse = await fetch(`${BLOB_BASE_URL}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          });
+          // ดึงเมนูจาก Supabase
+          const { data: menu, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-          if (!listResponse.ok) {
-            console.log('List response not ok:', listResponse.status);
+          if (error) {
+            console.error('Supabase error:', error);
             return res.status(200).json([]);
           }
 
-          const listData = await listResponse.json();
-          const menuBlob = listData.blobs?.find(blob => blob.pathname === 'menu.json');
-          
-          if (menuBlob) {
-            const menuResponse = await fetch(menuBlob.url);
-            const menuData = await menuResponse.json();
-            return res.status(200).json(menuData);
-          } else {
-            return res.status(200).json([]);
-          }
+          return res.status(200).json(menu || []);
         } catch (error) {
           console.error('Error fetching menu:', error);
           return res.status(200).json([]);
@@ -46,42 +46,51 @@ export default async function handler(req, res) {
 
       case 'POST':
         try {
-          const menuData = req.body;
+          const menuItems = req.body;
           
-          // Upload ไฟล์ไป Vercel Blob Storage
-          const uploadResponse = await fetch(`${BLOB_BASE_URL}`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              pathname: 'menu.json',
-              body: JSON.stringify(menuData),
-              access: 'public'
-            })
-          });
-
-          if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text();
-            console.error('Upload error:', errorText);
-            return res.status(500).json({ 
-              error: 'Failed to save menu',
-              details: errorText
+          if (!Array.isArray(menuItems)) {
+            return res.status(400).json({ 
+              error: 'Menu data must be an array',
+              timestamp: new Date().toISOString()
             });
           }
 
-          const result = await uploadResponse.json();
+          // ลบเมนูเก่าทั้งหมดก่อน (optional - หรือจะใช้ upsert)
+          await supabase.from('menu_items').delete().neq('id', 0);
+
+          // เพิ่มเมนูใหม่
+          const { data, error } = await supabase
+            .from('menu_items')
+            .insert(menuItems.map(item => ({
+              name: item.name,
+              price: item.price,
+              category: item.category || 'general',
+              description: item.description || '',
+              image_url: item.image || null,
+              is_available: item.available !== false
+            })))
+            .select();
+
+          if (error) {
+            console.error('Supabase insert error:', error);
+            return res.status(500).json({ 
+              error: 'Failed to save menu',
+              details: error.message,
+              timestamp: new Date().toISOString()
+            });
+          }
+
           return res.status(200).json({ 
             success: true, 
-            url: result.url,
+            count: data?.length || 0,
             timestamp: new Date().toISOString()
           });
         } catch (error) {
           console.error('Error saving menu:', error);
           return res.status(500).json({ 
             error: 'Failed to save menu',
-            details: error.message
+            details: error.message,
+            timestamp: new Date().toISOString()
           });
         }
 
