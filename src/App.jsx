@@ -320,7 +320,7 @@ function App() {
                   <span>ล้างข้อมูลทั้งหมด</span>
                 </button>
                 <div className="text-sm text-gray-600 flex items-center">
-                  <span>💾 ข้อมูลจะบันทึกอัตโนมัติใน Browser</span>
+                  <span>☁️ ข้อมูลจะบันทึกใน Vercel Blob Storage</span>
                 </div>
               </div>
             </div>
