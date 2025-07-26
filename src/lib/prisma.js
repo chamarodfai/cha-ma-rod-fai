@@ -1,7 +1,5 @@
-import { put, list, del } from '@vercel/blob';
-
-// ข้อมูลเริ่มต้นของเมนู
-const defaultMenuItems = [
+// Simple storage solution for Vercel
+const menuItems = [
   { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
   { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
   { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
@@ -16,32 +14,22 @@ const defaultMenuItems = [
   { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
 ];
 
+let orders = [];
+
 // Helper functions สำหรับจัดการข้อมูล
 export async function getMenuItems() {
   try {
-    const { blobs } = await list({ prefix: 'menu-items.json' });
-    if (blobs.length === 0) {
-      // ถ้าไม่มีไฟล์ ให้สร้างข้อมูลเริ่มต้น
-      await saveMenuItems(defaultMenuItems);
-      return defaultMenuItems;
-    }
-    
-    const response = await fetch(blobs[0].url);
-    const data = await response.json();
-    return data;
+    return menuItems;
   } catch (error) {
     console.error('Error getting menu items:', error);
-    return defaultMenuItems;
+    return menuItems;
   }
 }
 
 export async function saveMenuItems(items) {
   try {
-    const blob = await put('menu-items.json', JSON.stringify(items), {
-      access: 'public',
-      contentType: 'application/json'
-    });
-    return blob;
+    // For now, just return the items (in real app, save to blob storage)
+    return { success: true };
   } catch (error) {
     console.error('Error saving menu items:', error);
     throw error;
@@ -50,14 +38,7 @@ export async function saveMenuItems(items) {
 
 export async function getOrders() {
   try {
-    const { blobs } = await list({ prefix: 'orders.json' });
-    if (blobs.length === 0) {
-      return [];
-    }
-    
-    const response = await fetch(blobs[0].url);
-    const data = await response.json();
-    return data;
+    return orders;
   } catch (error) {
     console.error('Error getting orders:', error);
     return [];
@@ -66,24 +47,19 @@ export async function getOrders() {
 
 export async function saveOrder(order) {
   try {
-    // ดึงออเดอร์เก่า
-    const existingOrders = await getOrders();
-    
-    // เพิ่มออเดอร์ใหม่
     const newOrder = {
       ...order,
-      id: Date.now(), // ใช้ timestamp เป็น ID
+      id: Date.now(),
       createdAt: new Date().toISOString(),
       status: 'completed'
     };
     
-    const updatedOrders = [newOrder, ...existingOrders];
+    orders.unshift(newOrder);
     
-    // บันทึกกลับไป
-    const blob = await put('orders.json', JSON.stringify(updatedOrders), {
-      access: 'public',
-      contentType: 'application/json'
-    });
+    // Keep only last 100 orders
+    if (orders.length > 100) {
+      orders = orders.slice(0, 100);
+    }
     
     return newOrder;
   } catch (error) {
