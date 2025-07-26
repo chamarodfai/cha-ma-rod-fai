@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   try {
     // Supabase configuration
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mut17cdzoqscasrb.supabase.co';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ectkqadvtaywrodmqkuze.supabase.co';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (!supabaseKey) {
