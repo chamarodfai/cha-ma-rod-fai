@@ -64,6 +64,7 @@ export default async function handler(req, res) {
             .insert(menuItems.map(item => ({
               name: item.name,
               price: item.price,
+              cost: item.cost || 0,
               category: item.category || 'general',
               description: item.description || '',
               image_url: item.image || null,
