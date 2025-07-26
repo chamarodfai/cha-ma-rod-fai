@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save, Download } from 'lucide-react'
 
 const categories = ['ทั้งหมด', 'ชาเย็น', 'ชาร้อน', 'ชาปั่น', 'กาแฟ', 'เครื่องดื่มพิเศษ']
 
@@ -14,14 +14,58 @@ function App() {
   const [editingItem, setEditingItem] = useState(null)
   const [newItem, setNewItem] = useState({ name: '', price: '', cost: '', category: 'ชาเย็น' })
 
-  // โหลดเมนูจาก API (with fallback)
+  // โหลดข้อมูลจาก localStorage เมื่อเริ่มต้น
   useEffect(() => {
-    fetchMenuItems()
+    loadMenuFromStorage()
+    loadOrdersFromStorage()
   }, [])
 
+  // บันทึกเมนูลง localStorage ทุกครั้งที่มีการเปลี่ยนแปลง
+  useEffect(() => {
+    if (menuItems.length > 0) {
+      localStorage.setItem('thaiTeaMenuItems', JSON.stringify(menuItems))
+    }
+  }, [menuItems])
+
+  // บันทึกออเดอร์ลง localStorage
+  useEffect(() => {
+    if (orders.length > 0) {
+      localStorage.setItem('thaiTeaOrders', JSON.stringify(orders))
+    }
+  }, [orders])
+
+  const loadMenuFromStorage = () => {
+    try {
+      const savedMenu = localStorage.getItem('thaiTeaMenuItems')
+      if (savedMenu) {
+        const parsedMenu = JSON.parse(savedMenu)
+        setMenuItems(parsedMenu)
+        setLoading(false)
+        return
+      }
+    } catch (error) {
+      console.error('Error loading menu from storage:', error)
+    }
+    
+    // ถ้าไม่มีข้อมูลใน localStorage ให้ใช้ข้อมูลเริ่มต้น
+    fetchMenuItems()
+  }
+
+  const loadOrdersFromStorage = () => {
+    try {
+      const savedOrders = localStorage.getItem('thaiTeaOrders')
+      if (savedOrders) {
+        const parsedOrders = JSON.parse(savedOrders)
+        setOrders(parsedOrders)
+      }
+    } catch (error) {
+      console.error('Error loading orders from storage:', error)
+    }
+  }
+
   const fetchMenuItems = () => {
-    // ใช้ข้อมูลคงที่โดยตรง - เพิ่มข้อมูลต้นทุน
-    const menuData = [
+    // ข้อมูลเริ่มต้นเมื่อใช้ครั้งแรก
+    const defaultMenuData = [
       { id: 1, name: 'ชาไทยเย็น', price: 25, cost: 12, category: 'ชาเย็น' },
       { id: 2, name: 'ชาไทยร้อน', price: 20, cost: 10, category: 'ชาร้อน' },
       { id: 3, name: 'ชาเขียวเย็น', price: 25, cost: 13, category: 'ชาเย็น' },
@@ -36,7 +80,7 @@ function App() {
       { id: 12, name: 'น้ำแดง', price: 15, cost: 5, category: 'เครื่องดื่มพิเศษ' }
     ]
     
-    setMenuItems(menuData)
+    setMenuItems(defaultMenuData)
     setLoading(false)
   }
 
@@ -143,6 +187,37 @@ function App() {
     alert('แก้ไขเมนูสำเร็จ!')
   }
 
+  // ฟังก์ชั่นจัดการข้อมูล
+  const clearAllData = () => {
+    if (confirm('ต้องการล้างข้อมูลทั้งหมดหรือไม่? (เมนู + ออเดอร์)')) {
+      localStorage.removeItem('thaiTeaMenuItems')
+      localStorage.removeItem('thaiTeaOrders')
+      setOrders([])
+      fetchMenuItems() // โหลดเมนูเริ่มต้น
+      alert('ล้างข้อมูลเรียบร้อย!')
+    }
+  }
+
+  const exportData = () => {
+    const data = {
+      menuItems: menuItems,
+      orders: orders,
+      exportDate: new Date().toISOString()
+    }
+    
+    const dataStr = JSON.stringify(data, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
+    
+    const exportFileDefaultName = `thai-tea-pos-backup-${new Date().toISOString().split('T')[0]}.json`
+    
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+    
+    alert('ส่งออกข้อมูลสำเร็จ!')
+  }
+
   const filteredItems = selectedCategory === 'ทั้งหมด' 
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory)
@@ -155,12 +230,26 @@ function App() {
     
     // สร้าง Order ID แบบ local
     const orderId = Date.now()
+    const currentDate = new Date()
     
     const orderSummary = cart.map(item => 
       `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
     ).join('\n')
     
     const total = getTotalPrice()
+    
+    // สร้างข้อมูลออเดอร์ใหม่
+    const newOrder = {
+      id: orderId,
+      items: [...cart],
+      total: total,
+      date: currentDate.toISOString(),
+      displayDate: currentDate.toLocaleDateString('th-TH'),
+      displayTime: currentDate.toLocaleTimeString('th-TH')
+    }
+    
+    // เพิ่มออเดอร์ใหม่เข้าไปในรายการ
+    setOrders(prevOrders => [...prevOrders, newOrder])
     
     // แสดงผลออเดอร์
     alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${orderId}`)
@@ -210,6 +299,30 @@ function App() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Data Management */}
+            <div className="card mb-6">
+              <h3 className="text-lg font-semibold mb-4">จัดการข้อมูล</h3>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={exportData}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>ส่งออกข้อมูล</span>
+                </button>
+                <button
+                  onClick={clearAllData}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>ล้างข้อมูลทั้งหมด</span>
+                </button>
+                <div className="text-sm text-gray-600 flex items-center">
+                  <span>💾 ข้อมูลจะบันทึกอัตโนมัติใน Browser</span>
+                </div>
+              </div>
             </div>
 
             {/* Add New Item Form */}
