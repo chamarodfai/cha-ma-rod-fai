@@ -11,6 +11,15 @@ export default async function handler(req, res) {
     return;
   }
 
+  // ตรวจสอบ environment variable
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('Missing BLOB_READ_WRITE_TOKEN environment variable');
+    return res.status(500).json({ 
+      error: 'Server configuration error: Missing Blob Storage token',
+      details: 'BLOB_READ_WRITE_TOKEN not configured'
+    });
+  }
+
   try {
     const ORDERS_FILE = 'orders.json';
     
