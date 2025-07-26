@@ -1,6 +1,6 @@
-import { put, list } from '@vercel/blob';
+const { put, list } = require('@vercel/blob');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -29,80 +29,85 @@ export default async function handler(req, res) {
         const { blobs } = await list({ prefix: ORDERS_FILE });
         
         if (blobs.length === 0) {
-          // ไม่มีไฟล์ ส่งค่า array ว่าง
-          res.status(200).json([]);
-        } else {
-          // ดึงข้อมูลจากไฟล์ที่มีอยู่
-          const response = await fetch(blobs[0].url);
-          const ordersData = await response.json();
-          
-          // เรียงลำดับตามวันที่ล่าสุด
-          const sortedOrders = ordersData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          res.status(200).json(sortedOrders);
+          return res.status(200).json([]);
         }
+        
+        const blob = blobs[0];
+        const response = await fetch(blob.url);
+        const ordersData = await response.json();
+        
+        return res.status(200).json(ordersData);
+        
       } catch (error) {
-        console.error('Error reading orders from blob:', error);
-        res.status(500).json({ error: 'ไม่สามารถอ่านข้อมูลออเดอร์ได้' });
+        console.error('Error fetching orders from Blob Storage:', error);
+        return res.status(500).json({ error: 'Failed to fetch orders data' });
       }
-      
-    } else if (req.method === 'POST') {
+    }
+    
+    else if (req.method === 'POST') {
       // เพิ่มออเดอร์ใหม่
-      const { order_id, total, items } = req.body;
+      const { items, total, customer_name } = req.body;
       
-      if (!order_id || !total || !items || !Array.isArray(items)) {
-        return res.status(400).json({ error: 'ข้อมูลออเดอร์ไม่ครบถ้วน' });
+      if (!items || !total) {
+        return res.status(400).json({ error: 'Missing required fields' });
       }
       
       try {
-        // อ่านข้อมูลออเดอร์ปัจจุบัน
+        // ดึงข้อมูลออเดอร์ปัจจุบัน
         const { blobs } = await list({ prefix: ORDERS_FILE });
         let currentOrders = [];
         
         if (blobs.length > 0) {
-          const response = await fetch(blobs[0].url);
+          const blob = blobs[0];
+          const response = await fetch(blob.url);
           currentOrders = await response.json();
         }
         
-        // ตรวจสอบว่า order_id ซ้ำหรือไม่
-        const existingOrder = currentOrders.find(order => order.order_id === order_id);
-        if (existingOrder) {
-          return res.status(409).json({ error: 'หมายเลขออเดอร์ซ้ำ' });
-        }
+        // สร้าง Order ID ใหม่
+        const newOrderId = Date.now();
+        const currentDate = new Date();
         
         // สร้างออเดอร์ใหม่
         const newOrder = {
-          id: currentOrders.length + 1,
-          order_id: parseInt(order_id),
-          total: parseFloat(total),
+          id: newOrderId,
+          order_id: newOrderId,
           items: items,
-          created_at: new Date().toISOString(),
-          display_date: new Date().toLocaleDateString('th-TH'),
-          display_time: new Date().toLocaleTimeString('th-TH')
+          total: parseFloat(total),
+          customer_name: customer_name || 'ลูกค้าทั่วไป',
+          status: 'completed',
+          created_at: currentDate.toISOString(),
+          display_date: currentDate.toLocaleDateString('th-TH'),
+          display_time: currentDate.toLocaleTimeString('th-TH')
         };
         
-        currentOrders.push(newOrder);
+        currentOrders.unshift(newOrder); // เพิ่มที่ด้านบน
         
-        // บันทึกกลับไป Blob Storage
+        // เก็บแค่ 100 ออเดอร์ล่าสุด
+        if (currentOrders.length > 100) {
+          currentOrders = currentOrders.slice(0, 100);
+        }
+        
+        // บันทึกกลับลง Blob Storage
         await put(ORDERS_FILE, JSON.stringify(currentOrders), {
           access: 'public',
+          token: process.env.BLOB_READ_WRITE_TOKEN
         });
         
-        res.status(201).json(newOrder);
+        return res.status(201).json(newOrder);
+        
       } catch (error) {
         console.error('Error adding order:', error);
-        res.status(500).json({ error: 'ไม่สามารถบันทึกออเดอร์ได้' });
+        return res.status(500).json({ error: 'Failed to add order' });
       }
-      
-    } else {
+    }
+    
+    else {
       res.setHeader('Allow', ['GET', 'POST']);
-      res.status(405).end(`Method ${req.method} Not Allowed`);
+      return res.status(405).json({ error: 'Method not allowed' });
     }
     
   } catch (error) {
-    console.error('Blob Storage error:', error);
-    res.status(500).json({ 
-      error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ Blob Storage',
-      details: error.message 
-    });
+    console.error('Orders API Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-}
+};

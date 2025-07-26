@@ -1,6 +1,6 @@
-import { put, list } from '@vercel/blob';
+const { put, list, del } = require('@vercel/blob');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const MENU_FILE = 'menu.json';
+    const MENU_FILE = 'menu-items.json';
     
     if (req.method === 'GET') {
       // ดึงข้อมูลเมนูจาก Blob Storage
@@ -29,171 +29,191 @@ export default async function handler(req, res) {
         const { blobs } = await list({ prefix: MENU_FILE });
         
         if (blobs.length === 0) {
-          // ไม่มีไฟล์ ให้สร้างเมนูเริ่มต้น
+          // ไม่มีไฟล์ เริ่มต้นด้วยเมนูเริ่มต้น
           const defaultMenu = [
-            { id: 1, name: 'ชาไทยเย็น', price: 25, cost: 12, category: 'ชาเย็น', available: true },
-            { id: 2, name: 'ชาไทยร้อน', price: 20, cost: 10, category: 'ชาร้อน', available: true },
-            { id: 3, name: 'ชาเขียวเย็น', price: 25, cost: 13, category: 'ชาเย็น', available: true },
-            { id: 4, name: 'ชาเขียวร้อน', price: 20, cost: 11, category: 'ชาร้อน', available: true },
-            { id: 5, name: 'ชาดำเย็น', price: 20, cost: 8, category: 'ชาเย็น', available: true },
-            { id: 6, name: 'ชาดำร้อน', price: 15, cost: 6, category: 'ชาร้อน', available: true },
-            { id: 7, name: 'ชาไทยปั่น', price: 35, cost: 18, category: 'ชาปั่น', available: true },
-            { id: 8, name: 'ชาเขียวปั่น', price: 35, cost: 19, category: 'ชาปั่น', available: true },
-            { id: 9, name: 'กาแฟเย็น', price: 30, cost: 15, category: 'กาแฟ', available: true },
-            { id: 10, name: 'กาแฟร้อน', price: 25, cost: 12, category: 'กาแฟ', available: true },
-            { id: 11, name: 'โอเลี้ยง', price: 35, cost: 20, category: 'เครื่องดื่มพิเศษ', available: true },
-            { id: 12, name: 'น้ำแดง', price: 15, cost: 5, category: 'เครื่องดื่มพิเศษ', available: true }
+            { id: 1, name: 'ชาไทยเย็น', price: 25, cost: 12, category: 'ชาเย็น' },
+            { id: 2, name: 'ชาไทยร้อน', price: 20, cost: 10, category: 'ชาร้อน' },
+            { id: 3, name: 'ชาเขียวเย็น', price: 25, cost: 13, category: 'ชาเย็น' },
+            { id: 4, name: 'ชาเขียวร้อน', price: 20, cost: 11, category: 'ชาร้อน' },
+            { id: 5, name: 'ชาดำเย็น', price: 20, cost: 8, category: 'ชาเย็น' },
+            { id: 6, name: 'ชาดำร้อน', price: 15, cost: 6, category: 'ชาร้อน' },
+            { id: 7, name: 'ชาไทยปั่น', price: 35, cost: 18, category: 'ชาปั่น' },
+            { id: 8, name: 'ชาเขียวปั่น', price: 35, cost: 19, category: 'ชาปั่น' },
+            { id: 9, name: 'กาแฟเย็น', price: 30, cost: 15, category: 'กาแฟ' },
+            { id: 10, name: 'กาแฟร้อน', price: 25, cost: 12, category: 'กาแฟ' },
+            { id: 11, name: 'โอเลี้ยง', price: 35, cost: 20, category: 'เครื่องดื่มพิเศษ' },
+            { id: 12, name: 'น้ำแดง', price: 15, cost: 5, category: 'เครื่องดื่มพิเศษ' }
           ];
           
           // บันทึกเมนูเริ่มต้นลง Blob Storage
           await put(MENU_FILE, JSON.stringify(defaultMenu), {
             access: 'public',
+            token: process.env.BLOB_READ_WRITE_TOKEN
           });
           
-          res.status(200).json(defaultMenu);
-        } else {
-          // ดึงข้อมูลจากไฟล์ที่มีอยู่
-          const response = await fetch(blobs[0].url);
-          const menuData = await response.json();
-          res.status(200).json(menuData);
+          return res.status(200).json(defaultMenu);
         }
+        
+        // ดึงข้อมูลจากไฟล์ที่มีอยู่
+        const blob = blobs[0];
+        const response = await fetch(blob.url);
+        const menuData = await response.json();
+        
+        return res.status(200).json(menuData);
+        
       } catch (error) {
-        console.error('Error reading menu from blob:', error);
-        res.status(500).json({ error: 'ไม่สามารถอ่านข้อมูลเมนูได้' });
+        console.error('Error fetching menu from Blob Storage:', error);
+        return res.status(500).json({ error: 'Failed to fetch menu data' });
       }
-      
-    } else if (req.method === 'POST') {
+    }
+    
+    else if (req.method === 'POST') {
       // เพิ่มเมนูใหม่
-      const { name, price, category, cost } = req.body;
+      const { name, price, cost, category } = req.body;
       
-      if (!name || !price || !category) {
-        return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+      if (!name || !price || !cost || !category) {
+        return res.status(400).json({ error: 'Missing required fields' });
       }
       
       try {
-        // อ่านข้อมูลเมนูปัจจุบัน
+        // ดึงข้อมูลเมนูปัจจุบัน
         const { blobs } = await list({ prefix: MENU_FILE });
         let currentMenu = [];
         
         if (blobs.length > 0) {
-          const response = await fetch(blobs[0].url);
+          const blob = blobs[0];
+          const response = await fetch(blob.url);
           currentMenu = await response.json();
         }
         
-        // สร้างเมนูใหม่
+        // สร้าง ID ใหม่
+        const newId = currentMenu.length > 0 ? Math.max(...currentMenu.map(item => item.id)) + 1 : 1;
+        
+        // เพิ่มเมนูใหม่
         const newMenuItem = {
-          id: currentMenu.length > 0 ? Math.max(...currentMenu.map(item => item.id)) + 1 : 1,
-          name: name.trim(),
+          id: newId,
+          name,
           price: parseFloat(price),
-          cost: cost ? parseFloat(cost) : parseFloat(price) * 0.5, // ถ้าไม่มี cost ให้ใช้ 50% ของราคา
-          category: category.trim(),
-          available: true
+          cost: parseFloat(cost),
+          category,
+          available: true,
+          created_at: new Date().toISOString()
         };
         
         currentMenu.push(newMenuItem);
         
-        // บันทึกกลับไป Blob Storage
+        // บันทึกกลับลง Blob Storage
         await put(MENU_FILE, JSON.stringify(currentMenu), {
           access: 'public',
+          token: process.env.BLOB_READ_WRITE_TOKEN
         });
         
-        res.status(201).json(newMenuItem);
+        return res.status(201).json(newMenuItem);
+        
       } catch (error) {
         console.error('Error adding menu item:', error);
-        res.status(500).json({ error: 'ไม่สามารถเพิ่มเมนูได้' });
+        return res.status(500).json({ error: 'Failed to add menu item' });
       }
+    }
+    
+    else if (req.method === 'PUT') {
+      // อัพเดทเมนู
+      const { id, name, price, cost, category } = req.body;
       
-    } else if (req.method === 'PUT') {
-      // แก้ไขเมนู
-      const { id, name, price, category, cost, available } = req.body;
-      
-      if (!id || !name || !price || !category) {
-        return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+      if (!id || !name || !price || !cost || !category) {
+        return res.status(400).json({ error: 'Missing required fields' });
       }
       
       try {
+        // ดึงข้อมูลเมนูปัจจุบัน
         const { blobs } = await list({ prefix: MENU_FILE });
         
         if (blobs.length === 0) {
-          return res.status(404).json({ error: 'ไม่พบข้อมูลเมนู' });
+          return res.status(404).json({ error: 'Menu not found' });
         }
         
-        const response = await fetch(blobs[0].url);
+        const blob = blobs[0];
+        const response = await fetch(blob.url);
         let currentMenu = await response.json();
         
-        // หาและแก้ไขเมนู
-        const menuIndex = currentMenu.findIndex(item => item.id === parseInt(id));
-        if (menuIndex === -1) {
-          return res.status(404).json({ error: 'ไม่พบเมนูที่ต้องการแก้ไข' });
+        // หาและอัพเดทเมนู
+        const itemIndex = currentMenu.findIndex(item => item.id === parseInt(id));
+        
+        if (itemIndex === -1) {
+          return res.status(404).json({ error: 'Menu item not found' });
         }
         
-        currentMenu[menuIndex] = {
-          id: parseInt(id),
-          name: name.trim(),
+        currentMenu[itemIndex] = {
+          ...currentMenu[itemIndex],
+          name,
           price: parseFloat(price),
-          cost: cost ? parseFloat(cost) : currentMenu[menuIndex].cost || parseFloat(price) * 0.5,
-          category: category.trim(),
-          available: available !== undefined ? available : true
+          cost: parseFloat(cost),
+          category,
+          updated_at: new Date().toISOString()
         };
         
-        // บันทึกกลับไป Blob Storage
+        // บันทึกกลับลง Blob Storage
         await put(MENU_FILE, JSON.stringify(currentMenu), {
           access: 'public',
+          token: process.env.BLOB_READ_WRITE_TOKEN
         });
         
-        res.status(200).json(currentMenu[menuIndex]);
+        return res.status(200).json(currentMenu[itemIndex]);
+        
       } catch (error) {
         console.error('Error updating menu item:', error);
-        res.status(500).json({ error: 'ไม่สามารถแก้ไขเมนูได้' });
+        return res.status(500).json({ error: 'Failed to update menu item' });
       }
-      
-    } else if (req.method === 'DELETE') {
+    }
+    
+    else if (req.method === 'DELETE') {
       // ลบเมนู
       const { id } = req.body;
       
       if (!id) {
-        return res.status(400).json({ error: 'กรุณาระบุ ID ของเมนูที่ต้องการลบ' });
+        return res.status(400).json({ error: 'Missing item ID' });
       }
       
       try {
+        // ดึงข้อมูลเมนูปัจจุบัน
         const { blobs } = await list({ prefix: MENU_FILE });
         
         if (blobs.length === 0) {
-          return res.status(404).json({ error: 'ไม่พบข้อมูลเมนู' });
+          return res.status(404).json({ error: 'Menu not found' });
         }
         
-        const response = await fetch(blobs[0].url);
+        const blob = blobs[0];
+        const response = await fetch(blob.url);
         let currentMenu = await response.json();
         
-        // หาและลบเมนู
-        const menuIndex = currentMenu.findIndex(item => item.id === parseInt(id));
-        if (menuIndex === -1) {
-          return res.status(404).json({ error: 'ไม่พบเมนูที่ต้องการลบ' });
+        // ลบเมนู
+        const filteredMenu = currentMenu.filter(item => item.id !== parseInt(id));
+        
+        if (filteredMenu.length === currentMenu.length) {
+          return res.status(404).json({ error: 'Menu item not found' });
         }
         
-        const deletedItem = currentMenu.splice(menuIndex, 1)[0];
-        
-        // บันทึกกลับไป Blob Storage
-        await put(MENU_FILE, JSON.stringify(currentMenu), {
+        // บันทึกกลับลง Blob Storage
+        await put(MENU_FILE, JSON.stringify(filteredMenu), {
           access: 'public',
+          token: process.env.BLOB_READ_WRITE_TOKEN
         });
         
-        res.status(200).json({ message: 'ลบเมนูเรียบร้อยแล้ว', deletedItem });
+        return res.status(200).json({ message: 'Menu item deleted successfully' });
+        
       } catch (error) {
         console.error('Error deleting menu item:', error);
-        res.status(500).json({ error: 'ไม่สามารถลบเมนูได้' });
+        return res.status(500).json({ error: 'Failed to delete menu item' });
       }
-      
-    } else {
+    }
+    
+    else {
       res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
-      res.status(405).end(`Method ${req.method} Not Allowed`);
+      return res.status(405).json({ error: 'Method not allowed' });
     }
     
   } catch (error) {
-    console.error('Blob Storage error:', error);
-    res.status(500).json({ 
-      error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ Blob Storage',
-      details: error.message 
-    });
+    console.error('API Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-}
+};
