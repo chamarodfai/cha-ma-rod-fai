@@ -1,27 +1,78 @@
-import { useState } from 'react'
-import { Plus, Minus, ShoppingCart, Receipt, Coffee } from 'lucide-react'
-
-// เมนูชาไทย
-const menuItems = [
-  { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
-  { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
-  { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
-  { id: 4, name: 'ชาเขียวร้อน', price: 20, category: 'ชาร้อน' },
-  { id: 5, name: 'ชาดำเย็น', price: 20, category: 'ชาเย็น' },
-  { id: 6, name: 'ชาดำร้อน', price: 15, category: 'ชาร้อน' },
-  { id: 7, name: 'ชาไทยปั่น', price: 35, category: 'ชาปั่น' },
-  { id: 8, name: 'ชาเขียวปั่น', price: 35, category: 'ชาปั่น' },
-  { id: 9, name: 'กาแฟเย็น', price: 30, category: 'กาแฟ' },
-  { id: 10, name: 'กาแฟร้อน', price: 25, category: 'กาแฟ' },
-  { id: 11, name: 'โอเลี้ยง', price: 35, category: 'เครื่องดื่มพิเศษ' },
-  { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
-]
+import { useState, useEffect } from 'react'
+import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3 } from 'lucide-react'
 
 const categories = ['ทั้งหมด', 'ชาเย็น', 'ชาร้อน', 'ชาปั่น', 'กาแฟ', 'เครื่องดื่มพิเศษ']
 
 function App() {
   const [cart, setCart] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด')
+  const [menuItems, setMenuItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState([])
+  const [showDashboard, setShowDashboard] = useState(false)
+
+  // โหลดเมนูจาก API
+  useEffect(() => {
+    fetchMenuItems()
+  }, [])
+
+  const fetchMenuItems = async () => {
+    try {
+      const response = await fetch('/api/menu')
+      if (response.ok) {
+        const data = await response.json()
+        setMenuItems(data)
+      } else {
+        console.error('Failed to fetch menu items')
+        // ใช้ข้อมูล fallback หากไม่สามารถโหลดจาก API ได้
+        setMenuItems([
+          { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
+          { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
+          { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
+          { id: 4, name: 'ชาเขียวร้อน', price: 20, category: 'ชาร้อน' },
+          { id: 5, name: 'ชาดำเย็น', price: 20, category: 'ชาเย็น' },
+          { id: 6, name: 'ชาดำร้อน', price: 15, category: 'ชาร้อน' },
+          { id: 7, name: 'ชาไทยปั่น', price: 35, category: 'ชาปั่น' },
+          { id: 8, name: 'ชาเขียวปั่น', price: 35, category: 'ชาปั่น' },
+          { id: 9, name: 'กาแฟเย็น', price: 30, category: 'กาแฟ' },
+          { id: 10, name: 'กาแฟร้อน', price: 25, category: 'กาแฟ' },
+          { id: 11, name: 'โอเลี้ยง', price: 35, category: 'เครื่องดื่มพิเศษ' },
+          { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
+        ])
+      }
+    } catch (error) {
+      console.error('Error fetching menu items:', error)
+      // ใช้ข้อมูล fallback
+      setMenuItems([
+        { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
+        { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
+        { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
+        { id: 4, name: 'ชาเขียวร้อน', price: 20, category: 'ชาร้อน' },
+        { id: 5, name: 'ชาดำเย็น', price: 20, category: 'ชาเย็น' },
+        { id: 6, name: 'ชาดำร้อน', price: 15, category: 'ชาร้อน' },
+        { id: 7, name: 'ชาไทยปั่น', price: 35, category: 'ชาปั่น' },
+        { id: 8, name: 'ชาเขียวปั่น', price: 35, category: 'ชาปั่น' },
+        { id: 9, name: 'กาแฟเย็น', price: 30, category: 'กาแฟ' },
+        { id: 10, name: 'กาแฟร้อน', price: 25, category: 'กาแฟ' },
+        { id: 11, name: 'โอเลี้ยง', price: 35, category: 'เครื่องดื่มพิเศษ' },
+        { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders')
+      if (response.ok) {
+        const data = await response.json()
+        setOrders(data)
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+    }
+  }
 
   const addToCart = (item) => {
     const existingItem = cart.find(cartItem => cartItem.id === item.id)
@@ -65,19 +116,54 @@ function App() {
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory)
 
-  const processOrder = () => {
+  const processOrder = async () => {
     if (cart.length === 0) {
       alert('กรุณาเลือกสินค้าก่อนสั่งซื้อ')
       return
     }
     
-    const orderSummary = cart.map(item => 
-      `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
-    ).join('\n')
-    
-    const total = getTotalPrice()
-    alert(`รายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿`)
-    clearCart()
+    try {
+      setLoading(true)
+      
+      // บันทึกออเดอร์ลง Database
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          items: cart,
+          total: getTotalPrice()
+        })
+      })
+      
+      if (response.ok) {
+        const order = await response.json()
+        
+        const orderSummary = cart.map(item => 
+          `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
+        ).join('\n')
+        
+        const total = getTotalPrice()
+        alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${order.id}`)
+        clearCart()
+      } else {
+        throw new Error('Failed to save order')
+      }
+    } catch (error) {
+      console.error('Error processing order:', error)
+      
+      // Fallback: แสดงผลแบบเดิมหากไม่สามารถบันทึกได้
+      const orderSummary = cart.map(item => 
+        `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
+      ).join('\n')
+      
+      const total = getTotalPrice()
+      alert(`รายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\n⚠️ หมายเหตุ: ไม่สามารถบันทึกข้อมูลได้`)
+      clearCart()
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
