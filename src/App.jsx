@@ -24,7 +24,8 @@ function App() {
   const loadMenuFromDatabase = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/menu')
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      const response = await fetch(`${baseUrl}/api/menu`)
       
       if (response.ok) {
         const data = await response.json()
@@ -45,7 +46,8 @@ function App() {
 
   const loadOrdersFromDatabase = async () => {
     try {
-      const response = await fetch('/api/orders')
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      const response = await fetch(`${baseUrl}/api/orders`)
       
       if (response.ok) {
         const data = await response.json()
@@ -168,30 +170,62 @@ function App() {
   }
 
   // ฟังก์ชั่นจัดการเมนู
-  const addMenuItem = () => {
+  const addMenuItem = async () => {
     if (!newItem.name || !newItem.price || !newItem.cost) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน')
       return
     }
     
-    const newMenuId = Math.max(...menuItems.map(item => item.id), 0) + 1
-    const menuItem = {
-      id: newMenuId,
-      name: newItem.name,
-      price: parseFloat(newItem.price),
-      cost: parseFloat(newItem.cost),
-      category: newItem.category
+    try {
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      const response = await fetch(`${baseUrl}/api/menu`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newItem.name,
+          price: parseFloat(newItem.price),
+          category: newItem.category
+        })
+      })
+      
+      if (response.ok) {
+        const savedItem = await response.json()
+        setMenuItems([...menuItems, savedItem])
+        setNewItem({ name: '', price: '', cost: '', category: 'ชาเย็น' })
+        alert('เพิ่มเมนูสำเร็จ!')
+      } else {
+        throw new Error('ไม่สามารถบันทึกเมนูได้')
+      }
+    } catch (error) {
+      console.error('Error adding menu item:', error)
+      alert('เกิดข้อผิดพลาดในการเพิ่มเมนู: ' + error.message)
     }
-    
-    setMenuItems([...menuItems, menuItem])
-    setNewItem({ name: '', price: '', cost: '', category: 'ชาเย็น' })
-    alert('เพิ่มเมนูสำเร็จ!')
   }
 
-  const deleteMenuItem = (itemId) => {
+  const deleteMenuItem = async (itemId) => {
     if (confirm('ต้องการลบเมนูนี้หรือไม่?')) {
-      setMenuItems(menuItems.filter(item => item.id !== itemId))
-      alert('ลบเมนูสำเร็จ!')
+      try {
+        const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+        const response = await fetch(`${baseUrl}/api/menu`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: itemId })
+        })
+        
+        if (response.ok) {
+          setMenuItems(menuItems.filter(item => item.id !== itemId))
+          alert('ลบเมนูสำเร็จ!')
+        } else {
+          throw new Error('ไม่สามารถลบเมนูได้')
+        }
+      } catch (error) {
+        console.error('Error deleting menu item:', error)
+        alert('เกิดข้อผิดพลาดในการลบเมนู: ' + error.message)
+      }
     }
   }
 
@@ -205,26 +239,43 @@ function App() {
     })
   }
 
-  const saveEditItem = () => {
+  const saveEditItem = async () => {
     if (!editingItem.name || !editingItem.price || !editingItem.cost) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน')
       return
     }
     
-    setMenuItems(menuItems.map(item => 
-      item.id === editingItem.id 
-        ? {
-            ...item,
-            name: editingItem.name,
-            price: parseFloat(editingItem.price),
-            cost: parseFloat(editingItem.cost),
-            category: editingItem.category
-          }
-        : item
-    ))
-    
-    setEditingItem(null)
-    alert('แก้ไขเมนูสำเร็จ!')
+    try {
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      const response = await fetch(`${baseUrl}/api/menu`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: editingItem.id,
+          name: editingItem.name,
+          price: parseFloat(editingItem.price),
+          category: editingItem.category,
+          available: true
+        })
+      })
+      
+      if (response.ok) {
+        const updatedItem = await response.json()
+        setMenuItems(menuItems.map(item => 
+          item.id === editingItem.id ? updatedItem : item
+        ))
+        
+        setEditingItem(null)
+        alert('แก้ไขเมนูสำเร็จ!')
+      } else {
+        throw new Error('ไม่สามารถแก้ไขเมนูได้')
+      }
+    } catch (error) {
+      console.error('Error updating menu item:', error)
+      alert('เกิดข้อผิดพลาดในการแก้ไขเมนู: ' + error.message)
+    }
   }
 
   // ฟังก์ชั่นจัดการข้อมูล
@@ -255,9 +306,10 @@ function App() {
   const exportData = async () => {
     try {
       // ดึงข้อมูลล่าสุดจาก Database
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
       const [menuResponse, ordersResponse] = await Promise.all([
-        fetch('/api/menu'),
-        fetch('/api/orders')
+        fetch(`${baseUrl}/api/menu`),
+        fetch(`${baseUrl}/api/orders`)
       ])
       
       const menuData = menuResponse.ok ? await menuResponse.json() : menuItems
@@ -291,38 +343,52 @@ function App() {
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory)
 
-  const processOrder = () => {
+  const processOrder = async () => {
     if (cart.length === 0) {
       alert('กรุณาเลือกสินค้าก่อนสั่งซื้อ')
       return
     }
     
-    // สร้าง Order ID แบบ local
-    const orderId = Date.now()
-    const currentDate = new Date()
-    
-    const orderSummary = cart.map(item => 
-      `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
-    ).join('\n')
-    
-    const total = getTotalPrice()
-    
-    // สร้างข้อมูลออเดอร์ใหม่
-    const newOrder = {
-      id: orderId,
-      items: [...cart],
-      total: total,
-      date: currentDate.toISOString(),
-      displayDate: currentDate.toLocaleDateString('th-TH'),
-      displayTime: currentDate.toLocaleTimeString('th-TH')
+    try {
+      // สร้าง Order ID แบบ local
+      const orderId = Date.now()
+      const currentDate = new Date()
+      
+      const orderSummary = cart.map(item => 
+        `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
+      ).join('\n')
+      
+      const total = getTotalPrice()
+      
+      // บันทึกออเดอร์ลง Database
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      const response = await fetch(`${baseUrl}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order_id: orderId,
+          total: total,
+          items: cart
+        })
+      })
+      
+      if (response.ok) {
+        const savedOrder = await response.json()
+        // เพิ่มออเดอร์ใหม่เข้าไปในรายการ
+        setOrders(prevOrders => [...prevOrders, savedOrder])
+        
+        // แสดงผลออเดอร์
+        alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${orderId}`)
+        clearCart()
+      } else {
+        throw new Error('ไม่สามารถบันทึกออเดอร์ได้')
+      }
+    } catch (error) {
+      console.error('Error processing order:', error)
+      alert('เกิดข้อผิดพลาดในการสั่งซื้อ: ' + error.message)
     }
-    
-    // เพิ่มออเดอร์ใหม่เข้าไปในรายการ
-    setOrders(prevOrders => [...prevOrders, newOrder])
-    
-    // แสดงผลออเดอร์
-    alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${orderId}`)
-    clearCart()
   }
 
   return (
