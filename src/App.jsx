@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save, Download } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save, Download, RefreshCw } from 'lucide-react'
 
 const categories = ['ทั้งหมด', 'ชาเย็น', 'ชาร้อน', 'ชาปั่น', 'กาแฟ', 'เครื่องดื่มพิเศษ']
 
@@ -15,28 +15,68 @@ function App() {
   const [newItem, setNewItem] = useState({ name: '', price: '', cost: '', category: 'ชาเย็น' })
 
   // โหลดข้อมูลจาก localStorage เมื่อเริ่มต้น
+  // โหลดข้อมูลจาก Database เมื่อเริ่มต้น
   useEffect(() => {
-    loadMenuFromStorage()
-    loadOrdersFromStorage()
+    loadMenuFromDatabase()
+    loadOrdersFromDatabase()
   }, [])
 
-  // บันทึกเมนูลง localStorage ทุกครั้งที่มีการเปลี่ยนแปลง
+  const loadMenuFromDatabase = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/menu')
+      
+      if (response.ok) {
+        const data = await response.json()
+        setMenuItems(data)
+        // บันทึกเป็น backup ใน localStorage
+        localStorage.setItem('thaiTeaMenuItemsBackup', JSON.stringify(data))
+      } else {
+        throw new Error('ไม่สามารถโหลดเมนูจาก Database ได้')
+      }
+    } catch (error) {
+      console.error('Error loading menu from database:', error)
+      // ใช้ข้อมูลจาก localStorage เป็น fallback
+      loadMenuFromStorage()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadOrdersFromDatabase = async () => {
+    try {
+      const response = await fetch('/api/orders')
+      
+      if (response.ok) {
+        const data = await response.json()
+        setOrders(data)
+        // บันทึกเป็น backup ใน localStorage
+        localStorage.setItem('thaiTeaOrdersBackup', JSON.stringify(data))
+      }
+    } catch (error) {
+      console.error('Error loading orders from database:', error)
+      // ใช้ข้อมูลจาก localStorage เป็น fallback
+      loadOrdersFromStorage()
+    }
+  }
+
+  // บันทึกเมนูลง localStorage เป็น backup เท่านั้น
   useEffect(() => {
     if (menuItems.length > 0) {
-      localStorage.setItem('thaiTeaMenuItems', JSON.stringify(menuItems))
+      localStorage.setItem('thaiTeaMenuItemsBackup', JSON.stringify(menuItems))
     }
   }, [menuItems])
 
-  // บันทึกออเดอร์ลง localStorage
+  // บันทึกออเดอร์ลง localStorage เป็น backup เท่านั้น
   useEffect(() => {
     if (orders.length > 0) {
-      localStorage.setItem('thaiTeaOrders', JSON.stringify(orders))
+      localStorage.setItem('thaiTeaOrdersBackup', JSON.stringify(orders))
     }
   }, [orders])
 
   const loadMenuFromStorage = () => {
     try {
-      const savedMenu = localStorage.getItem('thaiTeaMenuItems')
+      const savedMenu = localStorage.getItem('thaiTeaMenuItemsBackup')
       if (savedMenu) {
         const parsedMenu = JSON.parse(savedMenu)
         setMenuItems(parsedMenu)
@@ -53,7 +93,7 @@ function App() {
 
   const loadOrdersFromStorage = () => {
     try {
-      const savedOrders = localStorage.getItem('thaiTeaOrders')
+      const savedOrders = localStorage.getItem('thaiTeaOrdersBackup')
       if (savedOrders) {
         const parsedOrders = JSON.parse(savedOrders)
         setOrders(parsedOrders)
@@ -188,34 +228,63 @@ function App() {
   }
 
   // ฟังก์ชั่นจัดการข้อมูล
-  const clearAllData = () => {
-    if (confirm('ต้องการล้างข้อมูลทั้งหมดหรือไม่? (เมนู + ออเดอร์)')) {
-      localStorage.removeItem('thaiTeaMenuItems')
-      localStorage.removeItem('thaiTeaOrders')
-      setOrders([])
-      fetchMenuItems() // โหลดเมนูเริ่มต้น
-      alert('ล้างข้อมูลเรียบร้อย!')
+  const clearAllData = async () => {
+    if (confirm('ต้องการล้างข้อมูลทั้งหมดหรือไม่? (จะลบข้อมูลใน Database ด้วย)')) {
+      try {
+        // ล้างข้อมูลใน localStorage
+        localStorage.removeItem('thaiTeaMenuItemsBackup')
+        localStorage.removeItem('thaiTeaOrdersBackup')
+        localStorage.removeItem('thaiTeaMenuItems') // เก่า
+        localStorage.removeItem('thaiTeaOrders') // เก่า
+        
+        // รีเซ็ต state
+        setOrders([])
+        setMenuItems([])
+        
+        // โหลดเมนูเริ่มต้นใหม่จาก Database
+        await loadMenuFromDatabase()
+        
+        alert('ล้างข้อมูลเรียบร้อย!')
+      } catch (error) {
+        console.error('Error clearing data:', error)
+        alert('เกิดข้อผิดพลาดในการล้างข้อมูล')
+      }
     }
   }
 
-  const exportData = () => {
-    const data = {
-      menuItems: menuItems,
-      orders: orders,
-      exportDate: new Date().toISOString()
+  const exportData = async () => {
+    try {
+      // ดึงข้อมูลล่าสุดจาก Database
+      const [menuResponse, ordersResponse] = await Promise.all([
+        fetch('/api/menu'),
+        fetch('/api/orders')
+      ])
+      
+      const menuData = menuResponse.ok ? await menuResponse.json() : menuItems
+      const ordersData = ordersResponse.ok ? await ordersResponse.json() : orders
+      
+      const data = {
+        menuItems: menuData,
+        orders: ordersData,
+        exportDate: new Date().toISOString(),
+        source: 'Vercel Blob Storage'
+      }
+      
+      const dataStr = JSON.stringify(data, null, 2)
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
+      
+      const exportFileDefaultName = `thai-tea-pos-backup-${new Date().toISOString().split('T')[0]}.json`
+      
+      const linkElement = document.createElement('a')
+      linkElement.setAttribute('href', dataUri)
+      linkElement.setAttribute('download', exportFileDefaultName)
+      linkElement.click()
+      
+      alert('ส่งออกข้อมูลสำเร็จ!')
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      alert('เกิดข้อผิดพลาดในการส่งออกข้อมูล')
     }
-    
-    const dataStr = JSON.stringify(data, null, 2)
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
-    
-    const exportFileDefaultName = `thai-tea-pos-backup-${new Date().toISOString().split('T')[0]}.json`
-    
-    const linkElement = document.createElement('a')
-    linkElement.setAttribute('href', dataUri)
-    linkElement.setAttribute('download', exportFileDefaultName)
-    linkElement.click()
-    
-    alert('ส่งออกข้อมูลสำเร็จ!')
   }
 
   const filteredItems = selectedCategory === 'ทั้งหมด' 
@@ -266,6 +335,17 @@ function App() {
             <h1 className="text-2xl font-bold">POS ร้านชาไทย</h1>
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => {
+                loadMenuFromDatabase()
+                loadOrdersFromDatabase()
+              }}
+              className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+              title="รีเฟรชข้อมูลจาก Database"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>รีเฟรช</span>
+            </button>
             <button
               onClick={() => setShowMenuManager(!showMenuManager)}
               className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
