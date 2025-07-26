@@ -186,6 +186,7 @@ function App() {
         body: JSON.stringify({
           name: newItem.name,
           price: parseFloat(newItem.price),
+          cost: parseFloat(newItem.cost),
           category: newItem.category
         })
       })
@@ -256,6 +257,7 @@ function App() {
           id: editingItem.id,
           name: editingItem.name,
           price: parseFloat(editingItem.price),
+          cost: parseFloat(editingItem.cost),
           category: editingItem.category,
           available: true
         })

@@ -22,12 +22,18 @@ export default async function handler(req, res) {
         if (blobs.length === 0) {
           // ไม่มีไฟล์ ให้สร้างเมนูเริ่มต้น
           const defaultMenu = [
-            { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาไทย', available: true },
-            { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาไทย', available: true },
-            { id: 3, name: 'ชาเขียวเย็น', price: 30, category: 'ชาเขียว', available: true },
-            { id: 4, name: 'ชาเขียวร้อน', price: 25, category: 'ชาเขียว', available: true },
-            { id: 5, name: 'ชาดำเย็น', price: 25, category: 'ชาดำ', available: true },
-            { id: 6, name: 'ชาดำร้อน', price: 20, category: 'ชาดำ', available: true }
+            { id: 1, name: 'ชาไทยเย็น', price: 25, cost: 12, category: 'ชาเย็น', available: true },
+            { id: 2, name: 'ชาไทยร้อน', price: 20, cost: 10, category: 'ชาร้อน', available: true },
+            { id: 3, name: 'ชาเขียวเย็น', price: 25, cost: 13, category: 'ชาเย็น', available: true },
+            { id: 4, name: 'ชาเขียวร้อน', price: 20, cost: 11, category: 'ชาร้อน', available: true },
+            { id: 5, name: 'ชาดำเย็น', price: 20, cost: 8, category: 'ชาเย็น', available: true },
+            { id: 6, name: 'ชาดำร้อน', price: 15, cost: 6, category: 'ชาร้อน', available: true },
+            { id: 7, name: 'ชาไทยปั่น', price: 35, cost: 18, category: 'ชาปั่น', available: true },
+            { id: 8, name: 'ชาเขียวปั่น', price: 35, cost: 19, category: 'ชาปั่น', available: true },
+            { id: 9, name: 'กาแฟเย็น', price: 30, cost: 15, category: 'กาแฟ', available: true },
+            { id: 10, name: 'กาแฟร้อน', price: 25, cost: 12, category: 'กาแฟ', available: true },
+            { id: 11, name: 'โอเลี้ยง', price: 35, cost: 20, category: 'เครื่องดื่มพิเศษ', available: true },
+            { id: 12, name: 'น้ำแดง', price: 15, cost: 5, category: 'เครื่องดื่มพิเศษ', available: true }
           ];
           
           // บันทึกเมนูเริ่มต้นลง Blob Storage
@@ -49,7 +55,7 @@ export default async function handler(req, res) {
       
     } else if (req.method === 'POST') {
       // เพิ่มเมนูใหม่
-      const { name, price, category } = req.body;
+      const { name, price, category, cost } = req.body;
       
       if (!name || !price || !category) {
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -70,6 +76,7 @@ export default async function handler(req, res) {
           id: currentMenu.length > 0 ? Math.max(...currentMenu.map(item => item.id)) + 1 : 1,
           name: name.trim(),
           price: parseFloat(price),
+          cost: cost ? parseFloat(cost) : parseFloat(price) * 0.5, // ถ้าไม่มี cost ให้ใช้ 50% ของราคา
           category: category.trim(),
           available: true
         };
@@ -89,7 +96,7 @@ export default async function handler(req, res) {
       
     } else if (req.method === 'PUT') {
       // แก้ไขเมนู
-      const { id, name, price, category, available } = req.body;
+      const { id, name, price, category, cost, available } = req.body;
       
       if (!id || !name || !price || !category) {
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -115,6 +122,7 @@ export default async function handler(req, res) {
           id: parseInt(id),
           name: name.trim(),
           price: parseFloat(price),
+          cost: cost ? parseFloat(cost) : currentMenu[menuIndex].cost || parseFloat(price) * 0.5,
           category: category.trim(),
           available: available !== undefined ? available : true
         };
