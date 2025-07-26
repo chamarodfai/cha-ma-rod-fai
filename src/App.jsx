@@ -16,53 +16,30 @@ function App() {
     fetchMenuItems()
   }, [])
 
-  const fetchMenuItems = async () => {
-    try {
-      // ใช้ข้อมูล fallback โดยตรงเพื่อให้แอปทำงานได้ทันที
-      const fallbackData = [
-        { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
-        { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
-        { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
-        { id: 4, name: 'ชาเขียวร้อน', price: 20, category: 'ชาร้อน' },
-        { id: 5, name: 'ชาดำเย็น', price: 20, category: 'ชาเย็น' },
-        { id: 6, name: 'ชาดำร้อน', price: 15, category: 'ชาร้อน' },
-        { id: 7, name: 'ชาไทยปั่น', price: 35, category: 'ชาปั่น' },
-        { id: 8, name: 'ชาเขียวปั่น', price: 35, category: 'ชาปั่น' },
-        { id: 9, name: 'กาแฟเย็น', price: 30, category: 'กาแฟ' },
-        { id: 10, name: 'กาแฟร้อน', price: 25, category: 'กาแฟ' },
-        { id: 11, name: 'โอเลี้ยง', price: 35, category: 'เครื่องดื่มพิเศษ' },
-        { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
-      ]
-      
-      setMenuItems(fallbackData)
-      
-      // ลองโหลดจาก API (แต่ไม่บล็อกการทำงาน)
-      try {
-        const response = await fetch('/api/menu')
-        if (response.ok) {
-          const data = await response.json()
-          setMenuItems(data)
-        }
-      } catch (apiError) {
-        console.log('API not available, using fallback data')
-      }
-    } catch (error) {
-      console.error('Error fetching menu items:', error)
-    } finally {
-      setLoading(false)
-    }
+  const fetchMenuItems = () => {
+    // ใช้ข้อมูลคงที่โดยตรง - ไม่ต้องรอ API
+    const menuData = [
+      { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
+      { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
+      { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
+      { id: 4, name: 'ชาเขียวร้อน', price: 20, category: 'ชาร้อน' },
+      { id: 5, name: 'ชาดำเย็น', price: 20, category: 'ชาเย็น' },
+      { id: 6, name: 'ชาดำร้อน', price: 15, category: 'ชาร้อน' },
+      { id: 7, name: 'ชาไทยปั่น', price: 35, category: 'ชาปั่น' },
+      { id: 8, name: 'ชาเขียวปั่น', price: 35, category: 'ชาปั่น' },
+      { id: 9, name: 'กาแฟเย็น', price: 30, category: 'กาแฟ' },
+      { id: 10, name: 'กาแฟร้อน', price: 25, category: 'กาแฟ' },
+      { id: 11, name: 'โอเลี้ยง', price: 35, category: 'เครื่องดื่มพิเศษ' },
+      { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
+    ]
+    
+    setMenuItems(menuData)
+    setLoading(false)
   }
 
   const fetchOrders = async () => {
-    try {
-      const response = await fetch('/api/orders')
-      if (response.ok) {
-        const data = await response.json()
-        setOrders(data)
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-    }
+    // ไม่ใช้ API - เก็บออเดอร์ใน local state เท่านั้น
+    console.log('Orders stored locally only')
   }
 
   const addToCart = (item) => {
@@ -107,55 +84,24 @@ function App() {
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory)
 
-  const processOrder = async () => {
+  const processOrder = () => {
     if (cart.length === 0) {
       alert('กรุณาเลือกสินค้าก่อนสั่งซื้อ')
       return
     }
     
-    try {
-      setLoading(true)
-      
-      // สร้าง Order ID แบบ local
-      const orderId = Date.now()
-      
-      const orderSummary = cart.map(item => 
-        `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
-      ).join('\n')
-      
-      const total = getTotalPrice()
-      
-      // ลองบันทึกลง API (แต่ไม่บล็อกถ้าไม่สำเร็จ)
-      try {
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            items: cart,
-            total: total
-          })
-        })
-        
-        if (response.ok) {
-          const order = await response.json()
-          alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${order.id}`)
-        } else {
-          throw new Error('API Error')
-        }
-      } catch (apiError) {
-        // แสดงผลแบบ offline mode
-        alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${orderId}\n\n📱 (โหมดออฟไลน์)`)
-      }
-      
-      clearCart()
-    } catch (error) {
-      console.error('Error processing order:', error)
-      alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
-    } finally {
-      setLoading(false)
-    }
+    // สร้าง Order ID แบบ local
+    const orderId = Date.now()
+    
+    const orderSummary = cart.map(item => 
+      `${item.name} x${item.quantity} = ${item.price * item.quantity}฿`
+    ).join('\n')
+    
+    const total = getTotalPrice()
+    
+    // แสดงผลออเดอร์
+    alert(`✅ สั่งซื้อสำเร็จ!\n\nรายการสั่งซื้อ:\n${orderSummary}\n\nรวมทั้งสิ้น: ${total}฿\n\nหมายเลขออเดอร์: #${orderId}`)
+    clearCart()
   }
 
   return (
