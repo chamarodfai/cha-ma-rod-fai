@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3 } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save } from 'lucide-react'
 
 const categories = ['ทั้งหมด', 'ชาเย็น', 'ชาร้อน', 'ชาปั่น', 'กาแฟ', 'เครื่องดื่มพิเศษ']
 
@@ -10,6 +10,9 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState([])
   const [showDashboard, setShowDashboard] = useState(false)
+  const [showMenuManager, setShowMenuManager] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
+  const [newItem, setNewItem] = useState({ name: '', price: '', cost: '', category: 'ชาเย็น' })
 
   // โหลดเมนูจาก API (with fallback)
   useEffect(() => {
@@ -17,20 +20,20 @@ function App() {
   }, [])
 
   const fetchMenuItems = () => {
-    // ใช้ข้อมูลคงที่โดยตรง - ไม่ต้องรอ API
+    // ใช้ข้อมูลคงที่โดยตรง - เพิ่มข้อมูลต้นทุน
     const menuData = [
-      { id: 1, name: 'ชาไทยเย็น', price: 25, category: 'ชาเย็น' },
-      { id: 2, name: 'ชาไทยร้อน', price: 20, category: 'ชาร้อน' },
-      { id: 3, name: 'ชาเขียวเย็น', price: 25, category: 'ชาเย็น' },
-      { id: 4, name: 'ชาเขียวร้อน', price: 20, category: 'ชาร้อน' },
-      { id: 5, name: 'ชาดำเย็น', price: 20, category: 'ชาเย็น' },
-      { id: 6, name: 'ชาดำร้อน', price: 15, category: 'ชาร้อน' },
-      { id: 7, name: 'ชาไทยปั่น', price: 35, category: 'ชาปั่น' },
-      { id: 8, name: 'ชาเขียวปั่น', price: 35, category: 'ชาปั่น' },
-      { id: 9, name: 'กาแฟเย็น', price: 30, category: 'กาแฟ' },
-      { id: 10, name: 'กาแฟร้อน', price: 25, category: 'กาแฟ' },
-      { id: 11, name: 'โอเลี้ยง', price: 35, category: 'เครื่องดื่มพิเศษ' },
-      { id: 12, name: 'น้ำแดง', price: 15, category: 'เครื่องดื่มพิเศษ' }
+      { id: 1, name: 'ชาไทยเย็น', price: 25, cost: 12, category: 'ชาเย็น' },
+      { id: 2, name: 'ชาไทยร้อน', price: 20, cost: 10, category: 'ชาร้อน' },
+      { id: 3, name: 'ชาเขียวเย็น', price: 25, cost: 13, category: 'ชาเย็น' },
+      { id: 4, name: 'ชาเขียวร้อน', price: 20, cost: 11, category: 'ชาร้อน' },
+      { id: 5, name: 'ชาดำเย็น', price: 20, cost: 8, category: 'ชาเย็น' },
+      { id: 6, name: 'ชาดำร้อน', price: 15, cost: 6, category: 'ชาร้อน' },
+      { id: 7, name: 'ชาไทยปั่น', price: 35, cost: 18, category: 'ชาปั่น' },
+      { id: 8, name: 'ชาเขียวปั่น', price: 35, cost: 19, category: 'ชาปั่น' },
+      { id: 9, name: 'กาแฟเย็น', price: 30, cost: 15, category: 'กาแฟ' },
+      { id: 10, name: 'กาแฟร้อน', price: 25, cost: 12, category: 'กาแฟ' },
+      { id: 11, name: 'โอเลี้ยง', price: 35, cost: 20, category: 'เครื่องดื่มพิเศษ' },
+      { id: 12, name: 'น้ำแดง', price: 15, cost: 5, category: 'เครื่องดื่มพิเศษ' }
     ]
     
     setMenuItems(menuData)
@@ -80,6 +83,66 @@ function App() {
     return cart.reduce((total, item) => total + item.quantity, 0)
   }
 
+  // ฟังก์ชั่นจัดการเมนู
+  const addMenuItem = () => {
+    if (!newItem.name || !newItem.price || !newItem.cost) {
+      alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+      return
+    }
+    
+    const newMenuId = Math.max(...menuItems.map(item => item.id), 0) + 1
+    const menuItem = {
+      id: newMenuId,
+      name: newItem.name,
+      price: parseFloat(newItem.price),
+      cost: parseFloat(newItem.cost),
+      category: newItem.category
+    }
+    
+    setMenuItems([...menuItems, menuItem])
+    setNewItem({ name: '', price: '', cost: '', category: 'ชาเย็น' })
+    alert('เพิ่มเมนูสำเร็จ!')
+  }
+
+  const deleteMenuItem = (itemId) => {
+    if (confirm('ต้องการลบเมนูนี้หรือไม่?')) {
+      setMenuItems(menuItems.filter(item => item.id !== itemId))
+      alert('ลบเมนูสำเร็จ!')
+    }
+  }
+
+  const startEditItem = (item) => {
+    setEditingItem({
+      id: item.id,
+      name: item.name,
+      price: item.price.toString(),
+      cost: item.cost.toString(),
+      category: item.category
+    })
+  }
+
+  const saveEditItem = () => {
+    if (!editingItem.name || !editingItem.price || !editingItem.cost) {
+      alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+      return
+    }
+    
+    setMenuItems(menuItems.map(item => 
+      item.id === editingItem.id 
+        ? {
+            ...item,
+            name: editingItem.name,
+            price: parseFloat(editingItem.price),
+            cost: parseFloat(editingItem.cost),
+            category: editingItem.category
+          }
+        : item
+    ))
+    
+    setEditingItem(null)
+    alert('แก้ไขเมนูสำเร็จ!')
+  }
+
   const filteredItems = selectedCategory === 'ทั้งหมด' 
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory)
@@ -114,12 +177,207 @@ function App() {
             <h1 className="text-2xl font-bold">POS ร้านชาไทย</h1>
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowMenuManager(!showMenuManager)}
+              className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              <span>จัดการเมนู</span>
+            </button>
+            <button
+              onClick={() => setShowDashboard(!showDashboard)}
+              className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Dashboard</span>
+            </button>
             <div className="bg-white/20 px-3 py-1 rounded-full">
               วันที่: {new Date().toLocaleDateString('th-TH')}
             </div>
           </div>
         </div>
       </header>
+
+      {/* Menu Manager Modal */}
+      {showMenuManager && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">จัดการเมนู</h2>
+              <button
+                onClick={() => setShowMenuManager(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Add New Item Form */}
+            <div className="card mb-6">
+              <h3 className="text-lg font-semibold mb-4">เพิ่มเมนูใหม่</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <input
+                  type="text"
+                  placeholder="ชื่อเมนู"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                  className="input"
+                />
+                <input
+                  type="number"
+                  placeholder="ราคาขาย (บาท)"
+                  value={newItem.price}
+                  onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                  className="input"
+                />
+                <input
+                  type="number"
+                  placeholder="ต้นทุน (บาท)"
+                  value={newItem.cost}
+                  onChange={(e) => setNewItem({...newItem, cost: e.target.value})}
+                  className="input"
+                />
+                <select
+                  value={newItem.category}
+                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                  className="input"
+                >
+                  {categories.filter(cat => cat !== 'ทั้งหมด').map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={addMenuItem}
+                  className="btn btn-primary flex items-center justify-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>เพิ่ม</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Menu Items List */}
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">รายการเมนูทั้งหมด</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">ชื่อเมนู</th>
+                      <th className="text-left p-2">ประเภท</th>
+                      <th className="text-left p-2">ราคาขาย</th>
+                      <th className="text-left p-2">ต้นทุน</th>
+                      <th className="text-left p-2">กำไร</th>
+                      <th className="text-left p-2">การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {menuItems.map(item => (
+                      <tr key={item.id} className="border-b hover:bg-gray-50">
+                        {editingItem && editingItem.id === item.id ? (
+                          <>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={editingItem.name}
+                                onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                className="input text-sm"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <select
+                                value={editingItem.category}
+                                onChange={(e) => setEditingItem({...editingItem, category: e.target.value})}
+                                className="input text-sm"
+                              >
+                                {categories.filter(cat => cat !== 'ทั้งหมด').map(cat => (
+                                  <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={editingItem.price}
+                                onChange={(e) => setEditingItem({...editingItem, price: e.target.value})}
+                                className="input text-sm"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={editingItem.cost}
+                                onChange={(e) => setEditingItem({...editingItem, cost: e.target.value})}
+                                className="input text-sm"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <span className="text-green-600 font-semibold">
+                                {parseFloat(editingItem.price || 0) - parseFloat(editingItem.cost || 0)}฿
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={saveEditItem}
+                                  className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs flex items-center space-x-1"
+                                >
+                                  <Save className="w-3 h-3" />
+                                  <span>บันทึก</span>
+                                </button>
+                                <button
+                                  onClick={() => setEditingItem(null)}
+                                  className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+                                >
+                                  ยกเลิก
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="p-2 font-medium">{item.name}</td>
+                            <td className="p-2">
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                                {item.category}
+                              </span>
+                            </td>
+                            <td className="p-2 font-semibold text-thai-orange">{item.price}฿</td>
+                            <td className="p-2 text-gray-600">{item.cost}฿</td>
+                            <td className="p-2">
+                              <span className="text-green-600 font-semibold">
+                                {item.price - item.cost}฿
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => startEditItem(item)}
+                                  className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs flex items-center space-x-1"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                  <span>แก้ไข</span>
+                                </button>
+                                <button
+                                  onClick={() => deleteMenuItem(item.id)}
+                                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs flex items-center space-x-1"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>ลบ</span>
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto p-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
