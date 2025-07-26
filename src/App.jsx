@@ -25,14 +25,22 @@ function App() {
     try {
       setLoading(true)
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      console.log('Loading menu from:', `${baseUrl}/api/menu`);
+      
       const response = await fetch(`${baseUrl}/api/menu`)
+      
+      console.log('Menu API Response status:', response.status);
+      console.log('Menu API Response ok:', response.ok);
       
       if (response.ok) {
         const data = await response.json()
+        console.log('Menu data loaded:', data);
         setMenuItems(data)
         // บันทึกเป็น backup ใน localStorage
         localStorage.setItem('thaiTeaMenuItemsBackup', JSON.stringify(data))
       } else {
+        const errorText = await response.text();
+        console.error('Menu API Error:', response.status, errorText);
         console.log('API response not ok:', response.status, response.statusText)
         throw new Error('ไม่สามารถโหลดเมนูจาก Database ได้')
       }
@@ -195,6 +203,8 @@ function App() {
     // พยายามบันทึกลง API
     try {
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      console.log('Attempting to save menu item to:', `${baseUrl}/api/menu`);
+      
       const response = await fetch(`${baseUrl}/api/menu`, {
         method: 'POST',
         headers: {
@@ -208,19 +218,25 @@ function App() {
         })
       })
       
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (response.ok) {
         const savedItem = await response.json()
+        console.log('Saved item:', savedItem);
         // อัพเดท ID จาก server
         setMenuItems(prev => prev.map(item => 
           item.id === newMenuId ? { ...item, id: savedItem.id } : item
         ))
         alert('เพิ่มเมนูสำเร็จ! (บันทึกลง Database แล้ว)')
       } else {
-        alert('เพิ่มเมนูสำเร็จ! (บันทึกเฉพาะ Local)')
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        alert('เพิ่มเมนูสำเร็จ! (บันทึกเฉพาะ Local) - API Error: ' + response.status)
       }
     } catch (error) {
       console.error('Error adding menu item to API:', error)
-      alert('เพิ่มเมนูสำเร็จ! (บันทึกเฉพาะ Local)')
+      alert('เพิ่มเมนูสำเร็จ! (บันทึกเฉพาะ Local) - Network Error: ' + error.message)
     }
   }
 
