@@ -836,107 +836,27 @@ function App() {
   const loadAnalyticsData = () => {
     const analysis = analyzeOrderData()
     
-    // ถ้าไม่มีข้อมูลจริง ให้ใช้ข้อมูลตัวอย่าง
+    // แสดงเฉพาะข้อมูลจริงจาก orders เท่านั้น
     if (orders.length === 0) {
-      const sampleData = generateSampleAnalyticsData()
-      setAnalyticsData(sampleData)
-    } else {
-      setAnalyticsData(analysis)
-    }
-  }
-
-  // ฟังก์ชันสร้างข้อมูลตัวอย่างสำหรับ Demo
-  const generateSampleAnalyticsData = () => {
-    const today = new Date()
-    const sampleData = {
-      daily: {},
-      weekly: {},
-      monthly: {},
-      yearly: {},
-      totalRevenue: 15750,
-      totalProfit: 9450,
-      popularItems: [
-        { id: 1, name: 'ชาไทยเย็น', count: 45, revenue: 1125, percentage: '35.2' },
-        { id: 2, name: 'ชาเขียวเย็น', count: 32, revenue: 960, percentage: '25.0' },
-        { id: 3, name: 'กาแฟเย็น', count: 28, revenue: 980, percentage: '21.9' },
-        { id: 4, name: 'ชาไทยร้อน', count: 23, revenue: 460, percentage: '18.0' }
-      ],
-      menuDetails: {
+      // ถ้าไม่มีข้อมูลจริง ให้แสดงข้อมูลว่าง
+      setAnalyticsData({
         daily: {},
         weekly: {},
         monthly: {},
-        yearly: {}
-      }
+        yearly: {},
+        totalRevenue: 0,
+        totalProfit: 0,
+        popularItems: [],
+        menuDetails: {
+          daily: {},
+          weekly: {},
+          monthly: {},
+          yearly: {}
+        }
+      })
+    } else {
+      setAnalyticsData(analysis)
     }
-
-    // สร้างข้อมูลรายวัน 30 วันล่าสุด
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
-      const dateKey = date.toISOString().split('T')[0]
-      
-      const randomOrders = Math.floor(Math.random() * 20) + 5
-      const randomRevenue = randomOrders * (Math.random() * 50 + 30)
-      const randomProfit = randomRevenue * (0.5 + Math.random() * 0.3)
-      
-      sampleData.daily[dateKey] = {
-        orders: randomOrders,
-        revenue: Math.floor(randomRevenue),
-        profit: Math.floor(randomProfit)
-      }
-    }
-
-    // สร้างข้อมูลรายสัปดาห์ 12 สัปดาห์ล่าสุด
-    for (let i = 11; i >= 0; i--) {
-      const weekStart = new Date(today)
-      weekStart.setDate(weekStart.getDate() - (i * 7))
-      const weekKey = getWeekKey(weekStart)
-      
-      const weeklyOrders = Math.floor(Math.random() * 100) + 50
-      const weeklyRevenue = weeklyOrders * (Math.random() * 50 + 35)
-      const weeklyProfit = weeklyRevenue * (0.55 + Math.random() * 0.25)
-      
-      sampleData.weekly[weekKey] = {
-        orders: weeklyOrders,
-        revenue: Math.floor(weeklyRevenue),
-        profit: Math.floor(weeklyProfit)
-      }
-    }
-
-    // สร้างข้อมูลรายเดือน 12 เดือนล่าสุด
-    for (let i = 11; i >= 0; i--) {
-      const month = new Date(today)
-      month.setMonth(month.getMonth() - i)
-      const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
-      
-      const monthlyOrders = Math.floor(Math.random() * 400) + 200
-      const monthlyRevenue = monthlyOrders * (Math.random() * 50 + 35)
-      const monthlyProfit = monthlyRevenue * (0.55 + Math.random() * 0.25)
-      
-      sampleData.monthly[monthKey] = {
-        orders: monthlyOrders,
-        revenue: Math.floor(monthlyRevenue),
-        profit: Math.floor(monthlyProfit)
-      }
-    }
-
-    // สร้างข้อมูลรายปี 3 ปีล่าสุด
-    for (let i = 2; i >= 0; i--) {
-      const year = today.getFullYear() - i
-      const yearKey = `${year}`
-      
-      const yearlyOrders = Math.floor(Math.random() * 2000) + 1000
-      const yearlyRevenue = yearlyOrders * (Math.random() * 50 + 35)
-      const yearlyProfit = yearlyRevenue * (0.55 + Math.random() * 0.25)
-      
-      sampleData.yearly[yearKey] = {
-        orders: yearlyOrders,
-        revenue: Math.floor(yearlyRevenue),
-        profit: Math.floor(yearlyProfit)
-      }
-    }
-
-    return sampleData
   }
 
   // ฟังก์ชันโหลดข้อมูลวิเคราะห์จาก Database
@@ -1002,12 +922,42 @@ function App() {
         setAnalyticsData(databaseAnalytics)
         console.log('✅ Analytics loaded from database')
       } else {
-        console.log('⚠️ Database analytics not available, using local data')
-        loadAnalyticsData() // fallback to local analysis
+        console.log('⚠️ Database analytics not available, showing empty analytics')
+        // ถ้าไม่มีข้อมูลใน database ให้แสดงข้อมูลว่าง
+        setAnalyticsData({
+          daily: {},
+          weekly: {},
+          monthly: {},
+          yearly: {},
+          totalRevenue: 0,
+          totalProfit: 0,
+          popularItems: [],
+          menuDetails: {
+            daily: {},
+            weekly: {},
+            monthly: {},
+            yearly: {}
+          }
+        })
       }
     } catch (error) {
       console.error('Error loading analytics from database:', error)
-      loadAnalyticsData() // fallback to local analysis
+      // ถ้าเกิดข้อผิดพลาด ให้แสดงข้อมูลว่าง
+      setAnalyticsData({
+        daily: {},
+        weekly: {},
+        monthly: {},
+        yearly: {},
+        totalRevenue: 0,
+        totalProfit: 0,
+        popularItems: [],
+        menuDetails: {
+          daily: {},
+          weekly: {},
+          monthly: {},
+          yearly: {}
+        }
+      })
     }
   }
 
@@ -1516,14 +1466,13 @@ function App() {
 
               {/* Data Source Notice */}
               {orders.length === 0 && (
-                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5 text-blue-600" />
-                    <span className="text-blue-800 font-medium">แสดงข้อมูลตัวอย่าง</span>
+                    <BarChart3 className="w-5 h-5 text-yellow-600" />
+                    <span className="text-yellow-800 font-medium">ยังไม่มีข้อมูลการขาย</span>
                   </div>
-                  <p className="text-blue-700 text-sm mt-1">
-                    ยังไม่มีข้อมูลการขายจริง กำลังแสดงข้อมูลตัวอย่างเพื่อการสาธิต
-                    เมื่อมีการขายจริงแล้ว ข้อมูลจะอัปเดตเป็นข้อมูลจริงอัตโนมัติ
+                  <p className="text-yellow-700 text-sm mt-1">
+                    เริ่มต้นใช้งานระบบ POS และทำการขายเพื่อดูข้อมูลวิเคราะห์ที่นี่
                   </p>
                 </div>
               )}
@@ -1590,10 +1539,11 @@ function App() {
                     selectedPeriod === 'weekly' ? 'รายสัปดาห์' :
                     selectedPeriod === 'monthly' ? 'รายเดือน' : 'รายปี'
                   }</h3>
-                  <div style={{ height: '300px' }}>
-                    <Bar
-                      data={{
-                        labels: Object.keys(analyticsData[selectedPeriod]).slice(-10),
+                  {Object.keys(analyticsData[selectedPeriod]).length > 0 ? (
+                    <div style={{ height: '300px' }}>
+                      <Bar
+                        data={{
+                          labels: Object.keys(analyticsData[selectedPeriod]).slice(-10),
                         datasets: [
                           {
                             label: 'ยอดขาย',
@@ -1631,13 +1581,22 @@ function App() {
                         }
                       }}
                     />
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
+                      <div className="text-center text-gray-500">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                        <p>ไม่มีข้อมูลการขายในช่วงเวลานี้</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Orders Trend Chart */}
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                   <h3 className="text-xl font-bold mb-4 text-gray-800">แนวโน้มจำนวนออเดอร์</h3>
-                  <div style={{ height: '300px' }}>
+                  {Object.keys(analyticsData[selectedPeriod]).length > 0 ? (
+                    <div style={{ height: '300px' }}>
                     <Line
                       data={{
                         labels: Object.keys(analyticsData[selectedPeriod]).slice(-10),
@@ -1667,7 +1626,15 @@ function App() {
                         }
                       }}
                     />
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
+                      <div className="text-center text-gray-500">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                        <p>ไม่มีข้อมูลออเดอร์ในช่วงเวลานี้</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1679,74 +1646,94 @@ function App() {
                     <PieChart className="w-6 h-6" />
                     <span>สินค้ายอดนิยม</span>
                   </h3>
-                  <div style={{ height: '400px' }}>
-                    <Pie
-                      data={{
-                        labels: analyticsData.popularItems.slice(0, 8).map(item => item.name),
-                        datasets: [
-                          {
-                            data: analyticsData.popularItems.slice(0, 8).map(item => item.percentage),
-                            backgroundColor: [
-                              '#FF6384',
-                              '#36A2EB',
-                              '#FFCE56',
-                              '#4BC0C0',
-                              '#9966FF',
-                              '#FF9F40',
-                              '#FF6384',
-                              '#C9CBCF'
-                            ],
-                            borderWidth: 2,
-                            borderColor: '#fff'
-                          }
-                        ]
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: 'right'
-                          },
-                          tooltip: {
-                            callbacks: {
-                              label: function(context) {
-                                return context.label + ': ' + context.parsed + '%'
+                  {analyticsData.popularItems.length > 0 ? (
+                    <div style={{ height: '400px' }}>
+                      <Pie
+                        data={{
+                          labels: analyticsData.popularItems.slice(0, 8).map(item => item.name),
+                          datasets: [
+                            {
+                              data: analyticsData.popularItems.slice(0, 8).map(item => item.percentage),
+                              backgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#FFCE56',
+                                '#4BC0C0',
+                                '#9966FF',
+                                '#FF9F40',
+                                '#FF6384',
+                                '#C9CBCF'
+                              ],
+                              borderWidth: 2,
+                              borderColor: '#fff'
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'right'
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  return context.label + ': ' + context.parsed + '%'
+                                }
                               }
                             }
                           }
-                        }
-                      }}
-                    />
-                  </div>
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-96 flex items-center justify-center bg-gray-50 rounded">
+                      <div className="text-center text-gray-500">
+                        <PieChart className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                        <p>ยังไม่มีข้อมูลสินค้ายอดนิยม</p>
+                        <p className="text-sm">เริ่มทำการขายเพื่อดูสถิติสินค้า</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Popular Items List */}
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                   <h3 className="text-xl font-bold mb-4 text-gray-800">รายการสินค้ายอดนิยม</h3>
-                  <div className="space-y-4">
-                    {analyticsData.popularItems.slice(0, 10).map((item, index) => (
-                      <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                            index === 0 ? 'bg-yellow-500' :
-                            index === 1 ? 'bg-gray-400' :
-                            index === 2 ? 'bg-orange-600' : 'bg-blue-500'
-                          }`}>
-                            {index + 1}
+                  {analyticsData.popularItems.length > 0 ? (
+                    <div className="space-y-4">
+                      {analyticsData.popularItems.slice(0, 10).map((item, index) => (
+                        <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                              index === 0 ? 'bg-yellow-500' :
+                              index === 1 ? 'bg-gray-400' :
+                              index === 2 ? 'bg-orange-600' : 'bg-blue-500'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">{item.name}</p>
+                              <p className="text-sm text-gray-600">ขายได้ {item.count} ชิ้น</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-800">{item.name}</p>
-                            <p className="text-sm text-gray-600">ขายได้ {item.count} ชิ้น</p>
+                          <div className="text-right">
+                            <p className="font-bold text-thai-orange">{item.percentage}%</p>
+                            <p className="text-sm text-gray-600">฿{item.revenue.toLocaleString()}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-thai-orange">{item.percentage}%</p>
-                          <p className="text-sm text-gray-600">฿{item.revenue.toLocaleString()}</p>
-                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
+                      <div className="text-center text-gray-500">
+                        <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                        <p>ยังไม่มีข้อมูลสินค้ายอดนิยม</p>
+                        <p className="text-sm">ทำการขายเพื่อดูรายการสินค้าที่ขายดี</p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
