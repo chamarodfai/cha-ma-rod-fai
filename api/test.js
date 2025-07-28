@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://ectkqadvatwrodmqkuze.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2YXR3cm9kbXFrdXplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NTI1MDMsImV4cCI6MjA2OTEyODUwM30.vpKbaq98KYcMU_1s_co3oLLcjRvL010KYOrvf2JnpoE';
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// ใช้ environment variables เป็นหลัก แต่ fallback เป็น hardcoded values
+const finalSupabaseUrl = process.env.SUPABASE_URL || supabaseUrl;
+const finalSupabaseKey = process.env.SUPABASE_ANON_KEY || supabaseKey;
+
+const supabase = createClient(finalSupabaseUrl, finalSupabaseKey);
 
 export default async function handler(req, res) {
   // Set CORS headers

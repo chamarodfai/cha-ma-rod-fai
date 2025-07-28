@@ -29,8 +29,8 @@ function App() {
       try {
         if (typeof window !== 'undefined') {
           const { createClient } = await import('@supabase/supabase-js');
-          const supabaseUrl = 'https://ectkqadvtaywrodmqkuze.supabase.co';
-          const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2dGF5d3JvZG1xa3V6ZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM3OTcxMzk4LCJleHAiOjIwNTM1NDczOTh9.YOJpUHaFbLaKsQiWpYgtGHnMY4x-Xf8WGnU2J6ZMtHs';
+          const supabaseUrl = 'https://ectkqadvatwrodmqkuze.supabase.co';
+          const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2YXR3cm9kbXFrdXplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NTI1MDMsImV4cCI6MjA2OTEyODUwM30.vpKbaq98KYcMU_1s_co3oLLcjRvL010KYOrvf2JnpoE';
           
           const supabase = createClient(supabaseUrl, supabaseKey);
           console.log('Trying Supabase direct connection...');
@@ -56,9 +56,9 @@ function App() {
       
       // วิธีที่ 2: ลองใช้ API
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
-      console.log('Loading menu from API:', `${baseUrl}/api/menu-simple`);
+      console.log('Loading menu from API:', `${baseUrl}/api/menu`);
       
-      const response = await fetch(`${baseUrl}/api/menu-simple`)
+      const response = await fetch(`${baseUrl}/api/menu`)
       
       console.log('Menu API Response status:', response.status);
       console.log('Menu API Response ok:', response.ok);
@@ -87,7 +87,7 @@ function App() {
   const loadOrdersFromDatabase = async () => {
     try {
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
-      const response = await fetch(`${baseUrl}/api/orders-simple`)
+      const response = await fetch(`${baseUrl}/api/orders`)
       
       if (response.ok) {
         const data = await response.json()
@@ -235,8 +235,8 @@ function App() {
     try {
       if (typeof window !== 'undefined') {
         const { createClient } = await import('@supabase/supabase-js');
-        const supabaseUrl = 'https://ectkqadvtaywrodmqkuze.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2dGF5d3JvZG1xa3V6ZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM3OTcxMzk4LCJleHAiOjIwNTM1NDczOTh9.YOJpUHaFbLaKsQiWpYgtGHnMY4x-Xf8WGnU2J6ZMtHs';
+        const supabaseUrl = 'https://ectkqadvatwrodmqkuze.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2YXR3cm9kbXFrdXplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NTI1MDMsImV4cCI6MjA2OTEyODUwM30.vpKbaq98KYcMU_1s_co3oLLcjRvL010KYOrvf2JnpoE';
         
         const supabase = createClient(supabaseUrl, supabaseKey);
         console.log('Trying to save menu item directly to Supabase...');
@@ -271,9 +271,9 @@ function App() {
     // fallback: พยายามบันทึกลง API
     try {
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
-      console.log('Attempting to save menu item to:', `${baseUrl}/api/menu-simple`);
+      console.log('Attempting to save menu item to:', `${baseUrl}/api/menu`);
       
-      const response = await fetch(`${baseUrl}/api/menu-simple`, {
+      const response = await fetch(`${baseUrl}/api/menu`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,7 +316,7 @@ function App() {
       // พยายามลบจาก API
       try {
         const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
-        const response = await fetch(`${baseUrl}/api/menu-simple`, {
+        const response = await fetch(`${baseUrl}/api/menu`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -370,7 +370,7 @@ function App() {
     // พยายามบันทึกลง API
     try {
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
-      const response = await fetch(`${baseUrl}/api/menu-simple`, {
+      const response = await fetch(`${baseUrl}/api/menu`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -419,8 +419,8 @@ function App() {
       // ดึงข้อมูลล่าสุดจาก Database
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
       const [menuResponse, ordersResponse] = await Promise.all([
-        fetch(`${baseUrl}/api/menu-simple`),
-        fetch(`${baseUrl}/api/orders-simple`)
+        fetch(`${baseUrl}/api/menu`),
+        fetch(`${baseUrl}/api/orders`)
       ])
       
       const menuData = menuResponse.ok ? await menuResponse.json() : menuItems
@@ -491,7 +491,7 @@ function App() {
     // พยายามบันทึกลง API
     try {
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
-      const response = await fetch(`${baseUrl}/api/orders-simple`, {
+      const response = await fetch(`${baseUrl}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
