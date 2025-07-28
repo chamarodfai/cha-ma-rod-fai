@@ -1,19 +1,13 @@
 {
   "functions": {
-    "pages/api/menu.js": {
+    "api/menu.js": {
       "runtime": "nodejs18.x"
     },
-    "pages/api/orders.js": {
+    "api/orders.js": {
       "runtime": "nodejs18.x"
     },
-    "pages/api/test.js": {
+    "api/test.js": {
       "runtime": "nodejs18.x"
     }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/pages/api/$1"
-    }
-  ]
+  }
 }
