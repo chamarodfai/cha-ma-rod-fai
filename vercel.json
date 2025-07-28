@@ -1,13 +1,13 @@
 {
   "functions": {
     "api/menu.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@18"
     },
     "api/orders.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@18"
     },
     "api/test.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@18"
     }
   }
 }
