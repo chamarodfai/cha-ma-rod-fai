@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/*.js": {
-      "runtime": "@vercel/node@20"
-    },
-    "vercel/functions/*.js": {
-      "runtime": "@vercel/node@20"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/menu",
