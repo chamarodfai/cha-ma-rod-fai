@@ -25,8 +25,8 @@ export default async function handler(req, res) {
     // Test database connection
     const { data, error } = await supabase
       .from('menu_items')
-      .select('count(*)')
-      .single();
+      .select('id')
+      .limit(1);
     
     if (error) {
       console.error('Database test error:', error);
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ 
       message: 'API is working!',
       database: 'Connected',
-      itemCount: data.count || 0,
+      itemCount: data?.length || 0,
       timestamp: new Date().toISOString()
     });
     
