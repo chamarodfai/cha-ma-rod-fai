@@ -1,13 +1,1 @@
-{
-  "functions": {
-    "api/menu.js": {
-      "runtime": "@vercel/node@18"
-    },
-    "api/orders.js": {
-      "runtime": "@vercel/node@18"
-    },
-    "api/test.js": {
-      "runtime": "@vercel/node@18"
-    }
-  }
-}
+{}
