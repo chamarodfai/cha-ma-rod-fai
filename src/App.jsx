@@ -24,8 +24,39 @@ function App() {
   const loadMenuFromDatabase = async () => {
     try {
       setLoading(true)
+      
+      // วิธีที่ 1: ลองใช้ Supabase โดยตรง
+      try {
+        if (typeof window !== 'undefined') {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabaseUrl = 'https://ectkqadvtaywrodmqkuze.supabase.co';
+          const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2dGF5d3JvZG1xa3V6ZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM3OTcxMzk4LCJleHAiOjIwNTM1NDczOTh9.YOJpUHaFbLaKsQiWpYgtGHnMY4x-Xf8WGnU2J6ZMtHs';
+          
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          console.log('Trying Supabase direct connection...');
+          
+          const { data: menu, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (error) {
+            console.error('Supabase direct error:', error);
+          } else if (menu && menu.length > 0) {
+            console.log('✅ Menu loaded directly from Supabase:', menu);
+            setMenuItems(menu);
+            localStorage.setItem('thaiTeaMenuItemsBackup', JSON.stringify(menu));
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (supabaseError) {
+        console.log('Supabase direct connection failed:', supabaseError);
+      }
+      
+      // วิธีที่ 2: ลองใช้ API
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-      console.log('Loading menu from:', `${baseUrl}/api/menu`);
+      console.log('Loading menu from API:', `${baseUrl}/api/menu`);
       
       const response = await fetch(`${baseUrl}/api/menu`)
       
@@ -200,7 +231,44 @@ function App() {
     setMenuItems([...menuItems, menuItem])
     setNewItem({ name: '', price: '', cost: '', category: 'ชาไทย' })
     
-    // พยายามบันทึกลง API
+    // พยายามบันทึกลง Supabase โดยตรงก่อน
+    try {
+      if (typeof window !== 'undefined') {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseUrl = 'https://ectkqadvtaywrodmqkuze.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjdGtxYWR2dGF5d3JvZG1xa3V6ZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM3OTcxMzk4LCJleHAiOjIwNTM1NDczOTh9.YOJpUHaFbLaKsQiWpYgtGHnMY4x-Xf8WGnU2J6ZMtHs';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        console.log('Trying to save menu item directly to Supabase...');
+        
+        const { data, error } = await supabase
+          .from('menu_items')
+          .insert([{
+            name: newItem.name,
+            price: parseFloat(newItem.price),
+            cost: parseFloat(newItem.cost),
+            category: newItem.category,
+            available: true
+          }])
+          .select();
+
+        if (!error && data && data.length > 0) {
+          console.log('✅ Menu item saved directly to Supabase:', data[0]);
+          // อัพเดท ID จาก Supabase
+          setMenuItems(prev => prev.map(item => 
+            item.id === newMenuId ? { ...item, id: data[0].id } : item
+          ));
+          alert('เพิ่มเมนูสำเร็จ! (บันทึกลง Supabase Database แล้ว)');
+          return;
+        } else {
+          console.error('Supabase insert error:', error);
+        }
+      }
+    } catch (supabaseError) {
+      console.log('Supabase direct save failed:', supabaseError);
+    }
+    
+    // fallback: พยายามบันทึกลง API
     try {
       const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
       console.log('Attempting to save menu item to:', `${baseUrl}/api/menu`);
