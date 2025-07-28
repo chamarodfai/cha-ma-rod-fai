@@ -46,22 +46,58 @@ export default async function handler(req, res) {
 
       case 'POST':
         try {
-          const menuItems = req.body;
+          const menuItem = req.body;
           
-          if (!Array.isArray(menuItems)) {
+          console.log('Received menu item:', menuItem);
+          
+          // Handle single item (from web app)
+          if (!Array.isArray(menuItem)) {
+            // เพิ่มเมนูเดี่ยว
+            const { data, error } = await supabase
+              .from('menu_items')
+              .insert({
+                name: menuItem.name,
+                price: menuItem.price,
+                cost: menuItem.cost || 0,
+                category: menuItem.category || 'general',
+                description: menuItem.description || '',
+                image_url: menuItem.image || null,
+                is_available: menuItem.available !== false
+              })
+              .select()
+              .single();
+
+            if (error) {
+              console.error('Supabase insert error:', error);
+              return res.status(500).json({ 
+                error: 'Failed to save menu item',
+                details: error.message,
+                timestamp: new Date().toISOString()
+              });
+            }
+
+            return res.status(200).json({ 
+              success: true, 
+              item: data,
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          // Handle array (bulk insert)
+          if (!Array.isArray(menuItem)) {
             return res.status(400).json({ 
-              error: 'Menu data must be an array',
+              error: 'Invalid data format',
               timestamp: new Date().toISOString()
             });
           }
 
-          // ลบเมนูเก่าทั้งหมดก่อน (optional - หรือจะใช้ upsert)
+          // ลบเมนูเก่าทั้งหมดก่อน (bulk replace)
           await supabase.from('menu_items').delete().neq('id', 0);
 
           // เพิ่มเมนูใหม่
           const { data, error } = await supabase
             .from('menu_items')
-            .insert(menuItems.map(item => ({
+            .insert(menuItem.map(item => ({
               name: item.name,
               price: item.price,
               cost: item.cost || 0,
@@ -73,7 +109,7 @@ export default async function handler(req, res) {
             .select();
 
           if (error) {
-            console.error('Supabase insert error:', error);
+            console.error('Supabase bulk insert error:', error);
             return res.status(500).json({ 
               error: 'Failed to save menu',
               details: error.message,
