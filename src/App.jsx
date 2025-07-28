@@ -430,7 +430,7 @@ function App() {
         menuItems: menuData,
         orders: ordersData,
         exportDate: new Date().toISOString(),
-        source: 'Vercel Blob Storage'
+        source: 'Supabase Database'
       }
       
       const dataStr = JSON.stringify(data, null, 2)
@@ -586,7 +586,7 @@ function App() {
                   <span>ล้างข้อมูลทั้งหมด</span>
                 </button>
                 <div className="text-sm text-gray-600 flex items-center">
-                  <span>☁️ ข้อมูลจะบันทึกใน Vercel Blob Storage</span>
+                  <span>🗄️ ข้อมูลบันทึกใน Supabase Database v2.0</span>
                 </div>
               </div>
             </div>
