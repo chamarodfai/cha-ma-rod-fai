@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save, Download, RefreshCw, TrendingUp, Calendar, PieChart, X } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settings, Edit, Trash2, Save, Download, TrendingUp, Calendar, PieChart, X } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import {
   Chart as ChartJS,
@@ -36,7 +36,6 @@ function App() {
   const [menuItems, setMenuItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState([])
-  const [showDashboard, setShowDashboard] = useState(false)
   const [showMenuManager, setShowMenuManager] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [newItem, setNewItem] = useState({ name: '', price: '', cost: '', category: 'ชาไทย' })
@@ -1370,17 +1369,6 @@ function App() {
           </div>
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => {
-                loadMenuFromDatabase()
-                loadOrdersFromDatabase()
-              }}
-              className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-              title="รีเฟรชข้อมูลจาก Database"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>รีเฟรช</span>
-            </button>
-            <button
               onClick={() => setShowMenuManager(!showMenuManager)}
               className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
             >
@@ -1400,13 +1388,6 @@ function App() {
             >
               <Settings className="w-4 h-4" />
               <span>จัดการโปรโมชั่น</span>
-            </button>
-            <button
-              onClick={() => setShowDashboard(!showDashboard)}
-              className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Dashboard</span>
             </button>
             <button
               onClick={() => setShowAnalytics(!showAnalytics)}
