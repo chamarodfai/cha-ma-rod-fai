@@ -55,10 +55,10 @@ function App() {
       }
       
       // วิธีที่ 2: ลองใช้ API
-      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-      console.log('Loading menu from API:', `${baseUrl}/api/menu`);
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
+      console.log('Loading menu from API:', `${baseUrl}/api/menu-simple`);
       
-      const response = await fetch(`${baseUrl}/api/menu`)
+      const response = await fetch(`${baseUrl}/api/menu-simple`)
       
       console.log('Menu API Response status:', response.status);
       console.log('Menu API Response ok:', response.ok);
@@ -86,8 +86,8 @@ function App() {
 
   const loadOrdersFromDatabase = async () => {
     try {
-      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-      const response = await fetch(`${baseUrl}/api/orders`)
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
+      const response = await fetch(`${baseUrl}/api/orders-simple`)
       
       if (response.ok) {
         const data = await response.json()
@@ -270,10 +270,10 @@ function App() {
     
     // fallback: พยายามบันทึกลง API
     try {
-      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-      console.log('Attempting to save menu item to:', `${baseUrl}/api/menu`);
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
+      console.log('Attempting to save menu item to:', `${baseUrl}/api/menu-simple`);
       
-      const response = await fetch(`${baseUrl}/api/menu`, {
+      const response = await fetch(`${baseUrl}/api/menu-simple`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -315,8 +315,8 @@ function App() {
       
       // พยายามลบจาก API
       try {
-        const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-        const response = await fetch(`${baseUrl}/api/menu`, {
+        const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
+        const response = await fetch(`${baseUrl}/api/menu-simple`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -369,8 +369,8 @@ function App() {
     
     // พยายามบันทึกลง API
     try {
-      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-      const response = await fetch(`${baseUrl}/api/menu`, {
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
+      const response = await fetch(`${baseUrl}/api/menu-simple`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -417,10 +417,10 @@ function App() {
   const exportData = async () => {
     try {
       // ดึงข้อมูลล่าสุดจาก Database
-      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
       const [menuResponse, ordersResponse] = await Promise.all([
-        fetch(`${baseUrl}/api/menu`),
-        fetch(`${baseUrl}/api/orders`)
+        fetch(`${baseUrl}/api/menu-simple`),
+        fetch(`${baseUrl}/api/orders-simple`)
       ])
       
       const menuData = menuResponse.ok ? await menuResponse.json() : menuItems
@@ -490,8 +490,8 @@ function App() {
     
     // พยายามบันทึกลง API
     try {
-      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rodfaipos.vercel.app'
-      const response = await fetch(`${baseUrl}/api/orders`, {
+      const baseUrl = window.location.hostname === 'localhost' ? '' : 'https://cha-ma-rod-fai.vercel.app'
+      const response = await fetch(`${baseUrl}/api/orders-simple`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
