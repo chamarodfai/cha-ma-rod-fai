@@ -105,9 +105,15 @@ function App() {
 
   // โหลดข้อมูลวิเคราะห์เมื่อมีการเปลี่ยนแปลงออเดอร์หรือเมนู
   useEffect(() => {
-    if (orders.length > 0 && menuItems.length > 0) {
-      // ลองโหลดจาก database ก่อน แล้วค่อย fallback เป็น local analysis
-      loadAnalyticsFromDatabase()
+    // โหลด analytics ทันทีเมื่อโหลดแอป หรือเมื่อมีการเปลี่ยนแปลงออเดอร์
+    if (menuItems.length > 0) {
+      if (orders.length > 0) {
+        // ลองโหลดจาก database ก่อน แล้วค่อย fallback เป็น local analysis
+        loadAnalyticsFromDatabase()
+      } else {
+        // ถ้าไม่มีออเดอร์ ให้โหลดข้อมูลตัวอย่าง
+        loadAnalyticsData()
+      }
     }
   }, [orders, menuItems])
 
@@ -829,7 +835,108 @@ function App() {
   // ฟังก์ชันโหลดข้อมูลวิเคราะห์
   const loadAnalyticsData = () => {
     const analysis = analyzeOrderData()
-    setAnalyticsData(analysis)
+    
+    // ถ้าไม่มีข้อมูลจริง ให้ใช้ข้อมูลตัวอย่าง
+    if (orders.length === 0) {
+      const sampleData = generateSampleAnalyticsData()
+      setAnalyticsData(sampleData)
+    } else {
+      setAnalyticsData(analysis)
+    }
+  }
+
+  // ฟังก์ชันสร้างข้อมูลตัวอย่างสำหรับ Demo
+  const generateSampleAnalyticsData = () => {
+    const today = new Date()
+    const sampleData = {
+      daily: {},
+      weekly: {},
+      monthly: {},
+      yearly: {},
+      totalRevenue: 15750,
+      totalProfit: 9450,
+      popularItems: [
+        { id: 1, name: 'ชาไทยเย็น', count: 45, revenue: 1125, percentage: '35.2' },
+        { id: 2, name: 'ชาเขียวเย็น', count: 32, revenue: 960, percentage: '25.0' },
+        { id: 3, name: 'กาแฟเย็น', count: 28, revenue: 980, percentage: '21.9' },
+        { id: 4, name: 'ชาไทยร้อน', count: 23, revenue: 460, percentage: '18.0' }
+      ],
+      menuDetails: {
+        daily: {},
+        weekly: {},
+        monthly: {},
+        yearly: {}
+      }
+    }
+
+    // สร้างข้อมูลรายวัน 30 วันล่าสุด
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      const dateKey = date.toISOString().split('T')[0]
+      
+      const randomOrders = Math.floor(Math.random() * 20) + 5
+      const randomRevenue = randomOrders * (Math.random() * 50 + 30)
+      const randomProfit = randomRevenue * (0.5 + Math.random() * 0.3)
+      
+      sampleData.daily[dateKey] = {
+        orders: randomOrders,
+        revenue: Math.floor(randomRevenue),
+        profit: Math.floor(randomProfit)
+      }
+    }
+
+    // สร้างข้อมูลรายสัปดาห์ 12 สัปดาห์ล่าสุด
+    for (let i = 11; i >= 0; i--) {
+      const weekStart = new Date(today)
+      weekStart.setDate(weekStart.getDate() - (i * 7))
+      const weekKey = getWeekKey(weekStart)
+      
+      const weeklyOrders = Math.floor(Math.random() * 100) + 50
+      const weeklyRevenue = weeklyOrders * (Math.random() * 50 + 35)
+      const weeklyProfit = weeklyRevenue * (0.55 + Math.random() * 0.25)
+      
+      sampleData.weekly[weekKey] = {
+        orders: weeklyOrders,
+        revenue: Math.floor(weeklyRevenue),
+        profit: Math.floor(weeklyProfit)
+      }
+    }
+
+    // สร้างข้อมูลรายเดือน 12 เดือนล่าสุด
+    for (let i = 11; i >= 0; i--) {
+      const month = new Date(today)
+      month.setMonth(month.getMonth() - i)
+      const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
+      
+      const monthlyOrders = Math.floor(Math.random() * 400) + 200
+      const monthlyRevenue = monthlyOrders * (Math.random() * 50 + 35)
+      const monthlyProfit = monthlyRevenue * (0.55 + Math.random() * 0.25)
+      
+      sampleData.monthly[monthKey] = {
+        orders: monthlyOrders,
+        revenue: Math.floor(monthlyRevenue),
+        profit: Math.floor(monthlyProfit)
+      }
+    }
+
+    // สร้างข้อมูลรายปี 3 ปีล่าสุด
+    for (let i = 2; i >= 0; i--) {
+      const year = today.getFullYear() - i
+      const yearKey = `${year}`
+      
+      const yearlyOrders = Math.floor(Math.random() * 2000) + 1000
+      const yearlyRevenue = yearlyOrders * (Math.random() * 50 + 35)
+      const yearlyProfit = yearlyRevenue * (0.55 + Math.random() * 0.25)
+      
+      sampleData.yearly[yearKey] = {
+        orders: yearlyOrders,
+        revenue: Math.floor(yearlyRevenue),
+        profit: Math.floor(yearlyProfit)
+      }
+    }
+
+    return sampleData
   }
 
   // ฟังก์ชันโหลดข้อมูลวิเคราะห์จาก Database
@@ -1406,6 +1513,20 @@ function App() {
                   ))}
                 </div>
               </div>
+
+              {/* Data Source Notice */}
+              {orders.length === 0 && (
+                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <BarChart3 className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-800 font-medium">แสดงข้อมูลตัวอย่าง</span>
+                  </div>
+                  <p className="text-blue-700 text-sm mt-1">
+                    ยังไม่มีข้อมูลการขายจริง กำลังแสดงข้อมูลตัวอย่างเพื่อการสาธิต
+                    เมื่อมีการขายจริงแล้ว ข้อมูลจะอัปเดตเป็นข้อมูลจริงอัตโนมัติ
+                  </p>
+                </div>
+              )}
 
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
