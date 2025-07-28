@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_name VARCHAR(255) DEFAULT 'ลูกค้า',
   items JSONB NOT NULL DEFAULT '[]',
   total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  discount_amount DECIMAL(10, 2) DEFAULT 0,
+  final_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  promotion_id INTEGER,
+  promotion_name VARCHAR(255),
   status VARCHAR(50) DEFAULT 'pending',
   order_type VARCHAR(50) DEFAULT 'dine-in',
   table_number INTEGER,
@@ -46,8 +50,29 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create promotions table
+CREATE TABLE IF NOT EXISTS promotions (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  type VARCHAR(50) NOT NULL CHECK (type IN ('percentage', 'fixed')),
+  value DECIMAL(10, 2) NOT NULL,
+  min_amount DECIMAL(10, 2) DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  end_date TIMESTAMP WITH TIME ZONE,
+  usage_count INTEGER DEFAULT 0,
+  max_usage INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category);
+CREATE INDEX IF NOT EXISTS idx_orders_order_id ON orders(order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+CREATE INDEX IF NOT EXISTS idx_promotions_active ON promotions(is_active);
+CREATE INDEX IF NOT EXISTS idx_promotions_dates ON promotions(start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_menu_items_available ON menu_items(is_available);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);

@@ -41,26 +41,53 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       // Create new order
       console.log('Creating new order:', req.body);
-      const { items, total, customer_name } = req.body;
+      const { 
+        order_id,
+        items, 
+        total, 
+        customer_name, 
+        discount_amount = 0, 
+        final_total, 
+        promotion_id, 
+        promotion_name 
+      } = req.body;
       
       if (!items || !total) {
         console.error('Missing required order fields');
         return res.status(400).json({ error: 'Missing required fields: items, total' });
       }
 
+      const orderData = { 
+        order_id: order_id,
+        items: JSON.stringify(items), 
+        total: parseFloat(total),
+        discount_amount: parseFloat(discount_amount || 0),
+        final_total: parseFloat(final_total || total),
+        promotion_id: promotion_id || null,
+        promotion_name: promotion_name || null,
+        customer_name: customer_name || null,
+        created_at: new Date().toISOString()
+      }
+
       const { data, error } = await supabase
         .from('orders')
-        .insert([{ 
-          items: JSON.stringify(items), 
-          total: parseFloat(total),
-          customer_name: customer_name || null,
-          created_at: new Date().toISOString()
-        }])
+        .insert([orderData])
         .select();
 
       if (error) {
         console.error('Insert order error:', error);
         throw error;
+      }
+
+      // Update promotion usage count if promotion was used
+      if (promotion_id) {
+        await supabase
+          .from('promotions')
+          .update({ 
+            usage_count: supabase.raw('usage_count + 1'),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', promotion_id);
       }
 
       console.log('Successfully created order:', data);
