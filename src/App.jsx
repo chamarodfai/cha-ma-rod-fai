@@ -586,7 +586,7 @@ function App() {
                   <span>ล้างข้อมูลทั้งหมด</span>
                 </button>
                 <div className="text-sm text-gray-600 flex items-center">
-                  <span>🗄️ ข้อมูลบันทึกใน Supabase Database v2.0</span>
+                  <span>🗄️ ข้อมูลออนไลน์จาก Supabase Database v2.1</span>
                 </div>
               </div>
             </div>
