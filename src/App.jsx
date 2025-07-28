@@ -1415,8 +1415,8 @@ function App() {
       <header className="bg-gradient-to-r from-thai-orange to-thai-gold text-white p-4 shadow-lg">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Coffee className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">POS ร้านชาไทย</h1>
+            <img src="/logo.svg" alt="CHA MA ROD FAI Logo" className="h-8 w-auto" />
+            <h1 className="text-2xl font-bold">POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ)</h1>
           </div>
           <div className="flex items-center space-x-4">
             <button
@@ -1898,7 +1898,7 @@ function App() {
                 <div className="text-center mb-6">
                   <div className="flex justify-center items-center space-x-2 mb-2">
                     <Coffee className="w-8 h-8 text-thai-orange" />
-                    <h1 className="text-2xl font-bold text-thai-orange">POS ร้านชาไทย</h1>
+                    <h1 className="text-2xl font-bold text-thai-orange">POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ)</h1>
                   </div>
                   <p className="text-sm text-gray-600">ระบบจุดขาย</p>
                   <div className="w-full h-px bg-gray-300 my-3"></div>

@@ -1,0 +1,59 @@
+<!-- โลโก้ Cha Ma Rod Fai ในรูปแบบ SVG -->
+<svg width="200" height="150" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- พื้นหลัง -->
+  <rect width="200" height="150" fill="#f97316"/>
+  
+  <!-- รถไฟ -->
+  <g fill="white" stroke="white" stroke-width="2">
+    <!-- ล้อรถไฟ -->
+    <circle cx="40" cy="120" r="8"/>
+    <circle cx="65" cy="120" r="8"/>
+    <circle cx="90" cy="120" r="8"/>
+    <circle cx="115" cy="120" r="8"/>
+    <circle cx="140" cy="120" r="8"/>
+    <circle cx="165" cy="120" r="8"/>
+    
+    <!-- ตัวรถไฟ -->
+    <rect x="25" y="100" width="150" height="20" rx="10"/>
+    <rect x="30" y="85" width="40" height="15"/>
+    <rect x="75" y="85" width="50" height="15"/>
+    <rect x="130" y="85" width="40" height="15"/>
+    
+    <!-- หลังคารถไฟ -->
+    <rect x="20" y="80" width="160" height="5" rx="2"/>
+  </g>
+  
+  <!-- คนดื่มชา (ซ้าย) -->
+  <g fill="white">
+    <!-- หัว -->
+    <circle cx="50" cy="65" r="15"/>
+    <!-- ตัว -->
+    <ellipse cx="50" cy="85" rx="12" ry="15"/>
+    <!-- แขน -->
+    <ellipse cx="40" cy="75" rx="5" ry="10" transform="rotate(-20 40 75)"/>
+    <ellipse cx="60" cy="75" rx="5" ry="10" transform="rotate(20 60 75)"/>
+    <!-- แก้วชา -->
+    <rect x="35" y="50" width="8" height="15" rx="2"/>
+    <circle cx="39" cy="52" r="3" fill="none" stroke="white" stroke-width="1"/>
+  </g>
+  
+  <!-- คนดื่มชา (ขวา) -->
+  <g fill="white">
+    <!-- หัว -->
+    <circle cx="150" cy="65" r="15"/>
+    <!-- หมวก -->
+    <ellipse cx="150" cy="55" rx="18" ry="8"/>
+    <!-- ตัว -->
+    <ellipse cx="150" cy="85" rx="12" ry="15"/>
+    <!-- แขน -->
+    <ellipse cx="140" cy="75" rx="5" ry="10" transform="rotate(-20 140 75)"/>
+    <ellipse cx="160" cy="75" rx="5" ry="10" transform="rotate(20 160 75)"/>
+    <!-- แก้วชา -->
+    <rect x="157" y="50" width="8" height="15" rx="2"/>
+    <circle cx="161" cy="52" r="3" fill="none" stroke="white" stroke-width="1"/>
+  </g>
+  
+  <!-- ข้อความ -->
+  <text x="100" y="25" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="bold">Cha Ma Rod Fai</text>
+  <text x="100" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">(ชา-มา-รถ-ไฟ)</text>
+</svg>
