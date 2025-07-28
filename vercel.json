@@ -1,10 +1,10 @@
 {
   "functions": {
     "api/*.js": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@20"
     },
     "vercel/functions/*.js": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@20"
     }
   },
   "rewrites": [
