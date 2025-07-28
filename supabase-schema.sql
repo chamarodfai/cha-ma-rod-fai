@@ -73,11 +73,11 @@ INSERT INTO menu_items (name, price, cost, category, description) VALUES
 ('น้ำมะนาว', 15.00, 5.00, 'เครื่องดื่ม', 'น้ำมะนาวสดชื่น'),
 ('โซดา', 18.00, 7.00, 'เครื่องดื่ม', 'โซดาเย็นชื่นใจ'),
 ('ไข่มุก', 10.00, 3.00, 'Topping', 'ไข่มุกนุ่มเหนียว'),
-('วุ้นกะทิ', 8.00, 2.50, 'Topping', 'วุ้นกะทิหวานมัน') 
+('วุ้นกะทิ', 8.00, 2.50, 'Topping', 'วุ้นกะทิหวานมัน'),
+('โกโก้เย็น', 40.00, 25.00, 'เครื่องดื่ม', 'โกโก้เย็นหวานมัน')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   price = EXCLUDED.price,
   cost = EXCLUDED.cost,
   category = EXCLUDED.category,
   description = EXCLUDED.description;
-('โกโก้เย็น', 40.00, 'เครื่องดื่ม', 'โกโก้เย็นหวานมัน');
