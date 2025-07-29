@@ -1,0 +1,24 @@
+{
+  "order_id": "ORD-TEST123",
+  "customer_name": "ลูกค้าทดสอบ",
+  "items": [
+    {
+      "id": 1,
+      "name": "ชาไทยร้อน",
+      "price": 25,
+      "cost": 15,
+      "quantity": 2,
+      "toppings": []
+    }
+  ],
+  "total": 50,
+  "final_total": 50,
+  "discount_amount": 0,
+  "promotion_id": null,
+  "promotion_name": null,
+  "status": "completed",
+  "order_type": "dine-in",
+  "payment_method": "cash",
+  "table_number": null,
+  "notes": null
+}

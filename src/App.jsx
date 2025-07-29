@@ -1249,6 +1249,8 @@ function App() {
               POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ) ☕🚂
             </h1>
           </div>
+          <div className="flex space-x-1 sm:space-x-2">
+            <button
               onClick={() => navigateTo('main')}
               className={`px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap ${
                 currentPage === 'main' ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'
