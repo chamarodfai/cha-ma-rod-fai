@@ -14,7 +14,7 @@
     },
     {
       "source": "/api/analytics",
-      "destination": "/vercel/functions/analytics.js"
+      "destination": "/api/analytics.js"
     },
     {
       "source": "/api/(.*)",

@@ -3,8 +3,66 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CHA MA ROD FAI POS" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ)</title>
+    <style>
+      /* Universal responsive styles for all devices */
+      @media screen and (max-width: 480px) {
+        body { font-size: 12px; }
+        .container { padding: 0.5rem; }
+      }
+      @media screen and (min-width: 481px) and (max-width: 768px) {
+        body { font-size: 14px; }
+        .container { padding: 0.75rem; }
+      }
+      @media screen and (min-width: 769px) and (max-width: 1024px) {
+        body { font-size: 16px; }
+        .container { padding: 1rem; }
+      }
+      @media screen and (min-width: 1025px) and (max-width: 1440px) {
+        body { font-size: 18px; }
+        .container { padding: 1.25rem; }
+      }
+      @media screen and (min-width: 1441px) {
+        body { font-size: 20px; }
+        .container { padding: 1.5rem; }
+      }
+      
+      /* Device specific optimizations */
+      @media screen and (min-device-width: 320px) and (max-device-width: 480px) {
+        body { 
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+          touch-action: manipulation;
+        }
+      }
+      @media screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+        body { 
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+          touch-action: manipulation;
+        }
+      }
+      
+      /* Orientation optimizations */
+      @media screen and (orientation: landscape) {
+        body { overflow-x: auto; }
+        .main-container { flex-direction: row; }
+      }
+      @media screen and (orientation: portrait) {
+        body { overflow-x: hidden; }
+        .main-container { flex-direction: column; }
+      }
+      
+      /* High DPI displays */
+      @media screen and (-webkit-min-device-pixel-ratio: 2) {
+        body { -webkit-font-smoothing: antialiased; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

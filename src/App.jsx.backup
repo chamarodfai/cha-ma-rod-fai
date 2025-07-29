@@ -72,7 +72,7 @@ function App() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [password, setPassword] = useState('')
   const [pendingAction, setPendingAction] = useState('')
-  const adminPassword = 'chamarodfai1020' // รหัสผ่านสำหรับผู้ดูแลระบบ
+  const adminPassword = 'แ้ฟทฟพนกดฟร1020' // รหัสผ่านสำหรับผู้ดูแลระบบ
   
   const [analyticsData, setAnalyticsData] = useState({
     daily: {},

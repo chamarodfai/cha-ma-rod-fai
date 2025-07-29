@@ -59,7 +59,7 @@ export default async function handler(req, res) {
 
       const orderData = { 
         order_id: order_id,
-        items: JSON.stringify(items), 
+        items: items, // ส่ง array โดยตรง ไม่ต้อง JSON.stringify
         total: parseFloat(total),
         discount_amount: parseFloat(discount_amount || 0),
         final_total: parseFloat(final_total || total),
