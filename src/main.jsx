@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 
+// Updated: Force cache reload - Build 2025-07-29
 // ลอง render แบบง่าย ๆ
 try {
   const root = createRoot(document.getElementById('root'));
