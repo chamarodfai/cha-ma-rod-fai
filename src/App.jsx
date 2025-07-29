@@ -1412,23 +1412,24 @@ function App() {
   return (
     <div className="min-h-screen thai-gradient-bg">
       {/* Header */}
-      <header className="thai-header-bg text-white p-2 sm:p-4 shadow-xl">
-        <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
-          <div className="flex items-center space-x-2">
-            <div className="bg-white/20 p-1.5 rounded-full">
-              <img src="/logo.svg" alt="CHA MA ROD FAI Logo" className="h-6 sm:h-8 w-auto" />
+      <header className="thai-header-bg text-white p-3 sm:p-5 shadow-2xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-y-1"></div>
+        <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 relative z-10">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white/25 p-2 rounded-full shadow-lg glow-orange">
+              <img src="/logo.svg" alt="CHA MA ROD FAI Logo" className="h-7 sm:h-10 w-auto filter drop-shadow-md" />
             </div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-center sm:text-left drop-shadow-md">
-              POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ)
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-center sm:text-left text-glow">
+              🍃 POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ) 🍃
             </h1>
           </div>
           <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 overflow-x-auto">
             <button
               onClick={() => requireAuthentication('menu-manager')}
-              className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
+              className="bg-white/25 hover:bg-white/40 backdrop-blur-sm px-3 sm:px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-all duration-300 whitespace-nowrap border border-white/20 hover:border-white/40 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline text-sm lg:text-base">จัดการเมนู</span>
+              <Settings className="w-4 h-4 drop-shadow-sm" />
+              <span className="hidden sm:inline text-sm lg:text-base font-medium">🔧 จัดการเมนู</span>
             </button>
             <button
               onClick={() => setShowPromotionManager(!showPromotionManager)}

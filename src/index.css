@@ -1,114 +1,185 @@
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: 'Sarabun', sans-serif;
-  background: linear-gradient(135deg, #f5f3f0 0%, #e8e5e1 100%);
+  font-family: 'Sarabun', 'Kanit', sans-serif;
+  background: linear-gradient(135deg, #fef7ed 0%, #fed7aa 25%, #fb923c 50%, #ea580c 75%, #c2410c 100%);
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
 .btn-primary {
-  @apply bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105;
+  @apply bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 hover:from-orange-600 hover:via-red-500 hover:to-red-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95;
 }
 
 .btn-secondary {
-  @apply bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+  @apply bg-gradient-to-r from-amber-100 via-orange-100 to-yellow-100 hover:from-amber-200 hover:via-orange-200 hover:to-yellow-200 text-orange-800 font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg border border-orange-200;
 }
 
 .card {
-  @apply bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-4 border border-orange-100/50 hover:shadow-xl transition-all duration-300;
+  @apply bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-orange-100/50 hover:shadow-2xl transition-all duration-500 hover:transform hover:scale-[1.02];
 }
 
 .menu-item-card {
-  @apply bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-orange-100/50 p-4 hover:shadow-xl transition-all duration-300 cursor-pointer hover:bg-gradient-to-br hover:from-orange-50/50 hover:to-white;
+  @apply bg-gradient-to-br from-white via-orange-50/50 to-amber-50/50 backdrop-blur-lg rounded-2xl shadow-lg border border-orange-200/30 p-5 hover:shadow-2xl transition-all duration-400 cursor-pointer hover:bg-gradient-to-br hover:from-orange-100/70 hover:via-amber-100/60 hover:to-yellow-100/50 hover:transform hover:scale-105 hover:rotate-1;
 }
 
-/* Thai Tea Theme Colors */
+/* Enhanced Thai Tea Theme Colors */
 :root {
-  --thai-orange: #ff7b47;
-  --thai-cream: #fdf4e3;
-  --thai-brown: #8b4513;
-  --thai-gold: #ffc107;
+  --thai-orange: #fb923c;
+  --thai-orange-dark: #ea580c;
+  --thai-cream: #fef7ed;
+  --thai-brown: #92400e;
+  --thai-gold: #f59e0b;
+  --thai-red: #dc2626;
 }
 
 /* Responsive touch targets for mobile and tablet */
 @media (max-width: 480px) {
   .btn-primary, .btn-secondary {
-    @apply py-3 text-sm min-h-[44px] touch-manipulation;
+    @apply py-4 px-5 text-base min-h-[48px] touch-manipulation rounded-xl;
   }
   
   button {
     @apply touch-manipulation;
-    min-height: 44px;
+    min-height: 48px;
   }
   
   .menu-item-card {
-    @apply p-3 text-sm;
+    @apply p-4 text-sm rounded-xl;
   }
   
   .card {
-    @apply p-3 rounded-lg;
+    @apply p-4 rounded-xl;
   }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
   .btn-primary, .btn-secondary {
-    @apply py-3 text-base min-h-[46px] touch-manipulation;
+    @apply py-4 px-6 text-base min-h-[50px] touch-manipulation rounded-xl;
   }
   
   .menu-item-card {
-    @apply p-4 hover:scale-102 transition-transform;
+    @apply p-5 hover:scale-105 transition-transform duration-300 rounded-xl;
   }
 }
 
 /* iPad and tablet specific styles */
 @media (min-width: 769px) and (max-width: 1024px) {
   .btn-primary, .btn-secondary {
-    @apply py-3 px-6 text-base min-h-[48px];
+    @apply py-4 px-7 text-lg min-h-[52px] rounded-xl;
   }
   
   .menu-item-card {
-    @apply p-4 hover:scale-105 transition-transform;
+    @apply p-5 hover:scale-110 transition-transform duration-300 rounded-xl;
   }
 }
 
 /* Large screens */
 @media (min-width: 1025px) {
   .btn-primary, .btn-secondary {
-    @apply py-2 px-4;
+    @apply py-3 px-6 text-base rounded-xl;
   }
   
   .menu-item-card {
-    @apply hover:scale-105;
+    @apply hover:scale-105 hover:rotate-1 transition-all duration-400 rounded-xl;
   }
 }
 
 /* Enhanced visual effects */
 .thai-gradient-bg {
   background: linear-gradient(135deg, 
-    var(--thai-cream) 0%, 
-    #fff8f0 25%, 
-    #fef7ed 50%, 
-    var(--thai-cream) 100%);
+    #fef7ed 0%, 
+    #fed7aa 15%, 
+    #fdba74 30%, 
+    #fb923c 45%, 
+    #f97316 60%, 
+    #ea580c 75%, 
+    #dc2626 90%, 
+    #b91c1c 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+.thai-gradient-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M20 20c0-11.046-8.954-20-20-20v20h20z'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.thai-gradient-bg > * {
+  position: relative;
+  z-index: 1;
 }
 
 .thai-header-bg {
   background: linear-gradient(135deg, 
-    var(--thai-orange) 0%, 
-    #ff8c42 25%, 
-    #ff7b47 50%, 
-    #ff6b2b  100%);
+    #dc2626 0%, 
+    #ea580c 20%, 
+    #f97316 40%, 
+    #fb923c 60%, 
+    #f59e0b 80%, 
+    #eab308 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.thai-header-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  animation: float 6s ease-in-out infinite;
 }
 
 /* Smooth animations */
 .fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+  animation: fadeIn 0.6s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Glowing effects */
+.glow-orange {
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.3);
+}
+
+.glow-orange:hover {
+  box-shadow: 0 0 30px rgba(251, 146, 60, 0.5);
+}
+
+/* Text effects */
+.text-glow {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Pulse animation for important elements */
+.pulse-orange {
+  animation: pulseOrange 2s infinite;
+}
+
+@keyframes pulseOrange {
+  0% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(251, 146, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0); }
 }
