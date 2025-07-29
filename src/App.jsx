@@ -73,6 +73,65 @@ function App() {
   const [showReceipt, setShowReceipt] = useState(false)
   const [receiptData, setReceiptData] = useState(null)
 
+  // ฟังก์ชันดาวน์โหลดใบเสร็จเป็นรูปภาพ
+  const downloadReceiptAsImage = () => {
+    const receiptElement = document.getElementById('receipt-content')
+    if (!receiptElement) {
+      alert('ไม่พบใบเสร็จที่จะบันทึก')
+      return
+    }
+
+    if (typeof html2canvas === 'undefined') {
+      alert('ไม่สามารถโหลดไลบรารีสำหรับสร้างรูปภาพได้')
+      return
+    }
+
+    // แสดงสถานะการโหลด
+    const loadingBtn = document.querySelector('[onclick="downloadReceiptAsImage()"]')
+    if (loadingBtn) {
+      loadingBtn.textContent = 'กำลังสร้าง...'
+      loadingBtn.disabled = true
+    }
+
+    html2canvas(receiptElement, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: receiptElement.offsetWidth,
+      height: receiptElement.offsetHeight
+    }).then(canvas => {
+      try {
+        // สร้างลิงก์ดาวน์โหลด
+        const link = document.createElement('a')
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+        link.download = `receipt-${receiptData.order_id}-${timestamp}.png`
+        link.href = canvas.toDataURL('image/png', 0.9)
+        
+        // ดาวน์โหลดไฟล์
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        console.log('📸 Receipt image downloaded successfully!')
+        alert('บันทึกใบเสร็จเรียบร้อยแล้ว!')
+      } catch (error) {
+        console.error('❌ Error saving image:', error)
+        alert('เกิดข้อผิดพลาดในการบันทึกรูปภาพ')
+      }
+    }).catch(error => {
+      console.error('❌ Error generating receipt image:', error)
+      alert('เกิดข้อผิดพลาดในการสร้างรูปภาพใบเสร็จ')
+    }).finally(() => {
+      // รีเซ็ตปุ่ม
+      if (loadingBtn) {
+        loadingBtn.textContent = 'บันทึกรูป'
+        loadingBtn.disabled = false
+      }
+    })
+  }
+
   // โหลดข้อมูลเมนูจาก API
   useEffect(() => {
     fetchMenuItems()
@@ -445,21 +504,37 @@ function App() {
       return
     }
 
-    const { total } = calculateTotal()
+    const { total, subtotal, discount } = calculateTotal()
+    
+    // เตรียมข้อมูล items พร้อม cost สำหรับบันทึกใน Supabase
+    const itemsWithCost = cart.map(item => {
+      const menuItem = menuItems.find(m => m.id === item.id || m.name === item.name)
+      return {
+        ...item,
+        cost: item.cost || menuItem?.cost || (item.price * 0.6), // เพิ่ม cost สำหรับการคำนวณ
+        price: item.finalPrice || item.price,
+        originalPrice: item.price
+      }
+    })
+
     const orderData = {
-      items: cart,
-      total: total, // เปลี่ยนจาก total_amount เป็น total
       order_id: `ORD-${String(Date.now()).slice(-6)}`,
+      customer_name: 'ลูกค้า',
+      items: itemsWithCost,
+      total: total,
       final_total: total,
+      subtotal: subtotal,
+      discount_amount: discount,
       promotion_id: selectedPromotion?.id || null,
       promotion_name: selectedPromotion?.name || null,
-      timestamp: new Date().toISOString(),
-      formattedOrderId: `ORD-${String(Date.now()).slice(-6)}`
+      status: 'completed',
+      order_type: 'dine-in',
+      payment_method: 'cash',
+      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     }
 
-    console.log('📦 Order data:', orderData)
-    console.log('🛒 Cart items:', cart)
-    console.log('💰 Total amount:', total)
+    console.log('📦 Order data for Supabase:', orderData)
 
     try {
       console.log('🌐 Sending request to /api/orders...')
@@ -470,52 +545,59 @@ function App() {
       })
 
       console.log('📡 Response status:', response.status)
-      console.log('📡 Response ok:', response.ok)
-
+      
       let newOrder
       if (response.ok) {
         newOrder = await response.json()
-        console.log('✅ Order saved to database:', newOrder)
+        console.log('✅ Order saved to Supabase:', newOrder)
       } else {
         const errorText = await response.text()
-        console.warn('⚠️ API failed with status:', response.status, 'Error:', errorText)
-        // ถ้า API ล้มเหลว ใช้ข้อมูลท้องถิ่น
+        console.warn('⚠️ Supabase API failed:', response.status, errorText)
+        // ใช้ข้อมูลท้องถิ่นหาก API ล้มเหลว
         newOrder = {
           id: Date.now(),
-          ...orderData,
-          created_at: new Date().toISOString()
+          ...orderData
         }
+        console.log('📱 Using local fallback order:', newOrder)
       }
       
-      console.log('💾 Updating local state with order:', newOrder)
-      
       // อัพเดทข้อมูลในแอพ
-      setOrders([...orders, newOrder])
+      setOrders(prevOrders => [...prevOrders, newOrder])
       setReceiptData(newOrder)
-      setShowReceipt(true)
+      
+      // แสดง Receipt Modal หลังจาก state อัพเดท
+      setTimeout(() => {
+        setShowReceipt(true)
+        console.log('✅ Receipt modal should be visible now')
+        console.log('📱 Receipt data set:', newOrder)
+      }, 100)
+      
       setCart([])
       setSelectedPromotion(null)
       
-      console.log('✅ Checkout completed successfully!')
-      alert(`ชำระเงินสำเร็จ! ยอดรวม ฿${total.toLocaleString()}`)
+      console.log('✅ Checkout completed! Receipt should show now.')
       
     } catch (error) {
       console.error('❌ Error creating order:', error)
       // สำรองข้อมูลเมื่อเกิดข้อผิดพลาด
-      const newOrder = {
+      const fallbackOrder = {
         id: Date.now(),
-        ...orderData,
-        created_at: new Date().toISOString()
+        ...orderData
       }
       
-      console.log('💾 Using fallback order data:', newOrder)
+      setOrders(prevOrders => [...prevOrders, fallbackOrder])
+      setReceiptData(fallbackOrder)
       
-      setOrders([...orders, newOrder])
-      setReceiptData(newOrder)
-      setShowReceipt(true)
+      // แสดง Receipt Modal หลังจาก state อัพเดท
+      setTimeout(() => {
+        setShowReceipt(true)
+        console.log('✅ Fallback receipt modal should be visible now')
+      }, 100)
+      
       setCart([])
       setSelectedPromotion(null)
-      alert(`ชำระเงินสำเร็จ! (บันทึกท้องถิ่น) ยอดรวม ฿${total.toLocaleString()}`)
+      
+      console.log('💾 Using error fallback, receipt should show')
     }
   }
 
@@ -1868,19 +1950,26 @@ function App() {
                 </div>
               </div>
               
-              <div className="flex space-x-3 mt-6">
+              <div className="flex space-x-2 mt-6">
                 <button
                   onClick={() => setShowReceipt(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="flex-1 bg-gray-300 text-gray-700 px-3 py-3 rounded-lg hover:bg-gray-400 transition-colors"
                 >
                   ปิด
                 </button>
                 <button
                   onClick={() => window.print()}
-                  className="flex-1 bg-thai-orange text-white px-4 py-3 rounded-lg hover:bg-thai-orange-dark transition-colors flex items-center justify-center font-medium"
+                  className="flex-1 bg-blue-500 text-white px-3 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center font-medium"
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  พิมพ์ใบเสร็จ
+                  <Receipt className="w-4 h-4 mr-1" />
+                  พิมพ์
+                </button>
+                <button
+                  onClick={downloadReceiptAsImage}
+                  className="flex-1 bg-thai-orange text-white px-3 py-3 rounded-lg hover:bg-thai-orange-dark transition-colors flex items-center justify-center font-medium"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  บันทึกรูป
                 </button>
               </div>
             </div>
