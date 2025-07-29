@@ -523,15 +523,15 @@ function App() {
       items: itemsWithCost,
       total: total,
       final_total: total,
-      subtotal: subtotal,
       discount_amount: discount,
       promotion_id: selectedPromotion?.id || null,
       promotion_name: selectedPromotion?.name || null,
       status: 'completed',
       order_type: 'dine-in',
       payment_method: 'cash',
-      created_at: new Date().toISOString(),
-      timestamp: new Date().toISOString()
+      table_number: null,
+      notes: null,
+      created_at: new Date().toISOString()
     }
 
     console.log('📦 Order data for Supabase:', orderData)
@@ -552,7 +552,21 @@ function App() {
         console.log('✅ Order saved to Supabase:', newOrder)
       } else {
         const errorText = await response.text()
-        console.warn('⚠️ Supabase API failed:', response.status, errorText)
+        console.error('⚠️ Supabase API failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        })
+        
+        try {
+          const errorJson = JSON.parse(errorText)
+          console.error('📝 Parsed error details:', errorJson)
+          alert(`การบันทึกล้มเหลว: ${errorJson.error || errorJson.supabase_error || 'Unknown error'}`)
+        } catch (e) {
+          console.error('❌ Error parsing response:', e)
+          alert(`การบันทึกล้มเหลว (${response.status}): ${errorText}`)
+        }
+        
         // ใช้ข้อมูลท้องถิ่นหาก API ล้มเหลว
         newOrder = {
           id: Date.now(),

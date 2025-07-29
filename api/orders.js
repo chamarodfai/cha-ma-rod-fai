@@ -40,34 +40,59 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       // Create new order
-      console.log('Creating new order:', req.body);
+      console.log('Creating new order with request body:', JSON.stringify(req.body, null, 2));
+      
       const { 
         order_id,
         items, 
         total, 
-        customer_name, 
+        customer_name = 'ลูกค้า', // ค่าเริ่มต้น
         discount_amount = 0, 
         final_total, 
         promotion_id, 
-        promotion_name 
+        promotion_name,
+        status = 'completed',
+        order_type = 'dine-in',
+        payment_method = 'cash'
       } = req.body;
       
-      if (!items || !total) {
-        console.error('Missing required order fields');
-        return res.status(400).json({ error: 'Missing required fields: items, total' });
+      console.log('Extracted fields:', {
+        order_id,
+        items: items?.length || 0,
+        total,
+        customer_name,
+        discount_amount,
+        final_total
+      });
+      
+      if (!items || items.length === 0) {
+        console.error('Missing or empty items array');
+        return res.status(400).json({ error: 'Missing or empty items array' });
+      }
+      
+      if (!total && total !== 0) {
+        console.error('Missing total amount');
+        return res.status(400).json({ error: 'Missing total amount' });
       }
 
       const orderData = { 
-        order_id: order_id,
+        order_id: order_id || `ORD-${Date.now()}`,
         items: items, // ส่ง array โดยตรง ไม่ต้อง JSON.stringify
         total: parseFloat(total),
         discount_amount: parseFloat(discount_amount || 0),
         final_total: parseFloat(final_total || total),
         promotion_id: promotion_id || null,
         promotion_name: promotion_name || null,
-        customer_name: customer_name || null,
+        customer_name: customer_name,
+        status: status,
+        order_type: order_type,
+        payment_method: payment_method,
         created_at: new Date().toISOString()
       }
+      
+      console.log('Prepared order data for Supabase:', JSON.stringify(orderData, null, 2));
+
+      console.log('Prepared order data for Supabase:', JSON.stringify(orderData, null, 2));
 
       const { data, error } = await supabase
         .from('orders')
@@ -75,9 +100,23 @@ export default async function handler(req, res) {
         .select();
 
       if (error) {
-        console.error('Insert order error:', error);
-        throw error;
+        console.error('Supabase insert error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // ส่งข้อมูล error ที่ละเอียดกลับไป
+        return res.status(400).json({ 
+          error: 'Failed to create order',
+          supabase_error: error.message,
+          details: error.details,
+          hint: error.hint
+        });
       }
+
+      console.log('Successfully created order in Supabase:', data);
 
       // Update promotion usage count if promotion was used
       if (promotion_id) {
