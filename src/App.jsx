@@ -164,36 +164,65 @@ function App() {
     }
 
     orders.forEach(order => {
-      const date = new Date(order.created_at || order.timestamp)
-      const dateStr = date.toLocaleDateString('th-TH')
-      const revenue = order.total || order.total_amount || 0
-      const profit = order.items?.reduce((sum, item) => 
-        sum + ((item.price - item.cost) * item.quantity), 0) || 0
+      try {
+        const date = new Date(order.created_at || order.timestamp || new Date())
+        const dateStr = date.toLocaleDateString('th-TH')
+        
+        // ป้องกัน NaN ในการคำนวณ revenue
+        const revenue = parseFloat(order.total || order.total_amount || 0) || 0
+        
+        // ป้องกัน NaN ในการคำนวณ profit
+        let profit = 0
+        if (order.items && Array.isArray(order.items)) {
+          profit = order.items.reduce((sum, item) => {
+            const itemPrice = parseFloat(item.price || 0) || 0
+            const itemCost = parseFloat(item.cost || 0) || 0
+            const quantity = parseInt(item.quantity || 0) || 0
+            return sum + ((itemPrice - itemCost) * quantity)
+          }, 0)
+        }
+        profit = parseFloat(profit) || 0
 
-      // รายวัน
-      if (!analytics.daily[dateStr]) {
-        analytics.daily[dateStr] = { revenue: 0, profit: 0, orders: 0 }
+        // รายวัน
+        if (!analytics.daily[dateStr]) {
+          analytics.daily[dateStr] = { revenue: 0, profit: 0, orders: 0 }
+        }
+        analytics.daily[dateStr].revenue += revenue
+        analytics.daily[dateStr].profit += profit
+        analytics.daily[dateStr].orders += 1
+
+        analytics.totalRevenue += revenue
+        analytics.totalProfit += profit
+      } catch (error) {
+        console.error('Error calculating analytics for order:', order, error)
       }
-      analytics.daily[dateStr].revenue += revenue
-      analytics.daily[dateStr].profit += profit
-      analytics.daily[dateStr].orders += 1
-
-      analytics.totalRevenue += revenue
-      analytics.totalProfit += profit
     })
 
     // สินค้ายอดนิยม
     const itemCount = {}
     orders.forEach(order => {
-      order.items?.forEach(item => {
-        itemCount[item.name] = (itemCount[item.name] || 0) + item.quantity
-      })
+      try {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach(item => {
+            if (item.name) {
+              const quantity = parseInt(item.quantity || 0) || 0
+              itemCount[item.name] = (itemCount[item.name] || 0) + quantity
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Error counting items for order:', order, error)
+      }
     })
 
     analytics.popularItems = Object.entries(itemCount)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }))
+
+    // ตรวจสอบว่าค่าไม่เป็น NaN
+    analytics.totalRevenue = parseFloat(analytics.totalRevenue) || 0
+    analytics.totalProfit = parseFloat(analytics.totalProfit) || 0
 
     setAnalyticsData(analytics)
   }
@@ -202,20 +231,41 @@ function App() {
   const calculateDailySales = () => {
     const today = new Date().toLocaleDateString('th-TH')
     const todayOrders = orders.filter(order => {
-      const orderDate = new Date(order.created_at || order.timestamp).toLocaleDateString('th-TH')
-      return orderDate === today
+      try {
+        const orderDate = new Date(order.created_at || order.timestamp || new Date()).toLocaleDateString('th-TH')
+        return orderDate === today
+      } catch (error) {
+        console.error('Error filtering today orders:', error)
+        return false
+      }
     })
 
-    const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total || order.total_amount || 0), 0)
-    const todayProfit = todayOrders.reduce((sum, order) => 
-      sum + (order.items?.reduce((itemSum, item) => 
-        itemSum + ((item.price - item.cost) * item.quantity), 0) || 0), 0
-    )
+    const todayRevenue = todayOrders.reduce((sum, order) => {
+      const revenue = parseFloat(order.total || order.total_amount || 0) || 0
+      return sum + revenue
+    }, 0)
+    
+    const todayProfit = todayOrders.reduce((sum, order) => {
+      let orderProfit = 0
+      try {
+        if (order.items && Array.isArray(order.items)) {
+          orderProfit = order.items.reduce((itemSum, item) => {
+            const itemPrice = parseFloat(item.price || 0) || 0
+            const itemCost = parseFloat(item.cost || 0) || 0
+            const quantity = parseInt(item.quantity || 0) || 0
+            return itemSum + ((itemPrice - itemCost) * quantity)
+          }, 0)
+        }
+      } catch (error) {
+        console.error('Error calculating profit for order:', order, error)
+      }
+      return sum + (parseFloat(orderProfit) || 0)
+    }, 0)
 
     setDailySales({
-      today: todayRevenue,
-      todayOrders: todayOrders.length,
-      todayProfit: todayProfit
+      today: parseFloat(todayRevenue) || 0,
+      todayOrders: todayOrders.length || 0,
+      todayProfit: parseFloat(todayProfit) || 0
     })
   }
 
@@ -270,6 +320,7 @@ function App() {
     // รวม topping กับเครื่องดื่ม
     const finalItem = {
       ...item,
+      cost: parseFloat(item.cost) || 0, // เพิ่ม cost เพื่อป้องกัน NaN
       toppings: toppings,
       finalPrice: item.price + toppings.reduce((sum, topping) => sum + topping.price, 0)
     }
@@ -865,7 +916,7 @@ function App() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm">ยอดขายวันนี้</p>
-                <p className="text-3xl font-bold">฿{dailySales.today.toLocaleString()}</p>
+                <p className="text-3xl font-bold">฿{(parseFloat(dailySales.today) || 0).toLocaleString()}</p>
               </div>
               <Receipt className="w-12 h-12 text-blue-200" />
             </div>
@@ -885,7 +936,7 @@ function App() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm">กำไรวันนี้</p>
-                <p className="text-3xl font-bold">฿{dailySales.todayProfit.toLocaleString()}</p>
+                <p className="text-3xl font-bold">฿{(parseFloat(dailySales.todayProfit) || 0).toLocaleString()}</p>
               </div>
               <TrendingUp className="w-12 h-12 text-purple-200" />
             </div>
@@ -929,7 +980,7 @@ function App() {
               <div>
                 <p className="text-blue-100">ยอดขายรวม</p>
                 <p className="text-2xl font-bold">
-                  ฿{analyticsData.totalRevenue.toLocaleString()}
+                  ฿{(parseFloat(analyticsData.totalRevenue) || 0).toLocaleString()}
                 </p>
               </div>
               <Receipt className="w-8 h-8 text-blue-200" />
@@ -941,7 +992,7 @@ function App() {
               <div>
                 <p className="text-green-100">กำไรรวม</p>
                 <p className="text-2xl font-bold">
-                  ฿{analyticsData.totalProfit.toLocaleString()}
+                  ฿{(parseFloat(analyticsData.totalProfit) || 0).toLocaleString()}
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-200" />
@@ -965,8 +1016,8 @@ function App() {
               <div>
                 <p className="text-orange-100">อัตรากำไร</p>
                 <p className="text-2xl font-bold">
-                  {analyticsData.totalRevenue > 0 
-                    ? ((analyticsData.totalProfit / analyticsData.totalRevenue) * 100).toFixed(1)
+                  {(parseFloat(analyticsData.totalRevenue) || 0) > 0 
+                    ? (((parseFloat(analyticsData.totalProfit) || 0) / (parseFloat(analyticsData.totalRevenue) || 1)) * 100).toFixed(1)
                     : 0}%
                 </p>
               </div>
@@ -1005,8 +1056,8 @@ function App() {
                   <div key={date} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                     <span className="font-medium">{date}</span>
                     <div className="text-right">
-                      <div className="text-thai-orange font-bold">฿{data.revenue.toLocaleString()}</div>
-                      <div className="text-sm text-gray-600">{data.orders} ออเดอร์</div>
+                      <div className="text-thai-orange font-bold">฿{(parseFloat(data.revenue) || 0).toLocaleString()}</div>
+                      <div className="text-sm text-gray-600">{parseInt(data.orders) || 0} ออเดอร์</div>
                     </div>
                   </div>
                 ))}
@@ -1394,7 +1445,7 @@ function App() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-blue-100 text-sm">ยอดขายวันนี้</p>
-                    <p className="text-3xl font-bold">฿{dailySales.today.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">฿{(parseFloat(dailySales.today) || 0).toLocaleString()}</p>
                   </div>
                   <Receipt className="w-12 h-12 text-blue-200" />
                 </div>
@@ -1414,7 +1465,7 @@ function App() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-purple-100 text-sm">กำไรวันนี้</p>
-                    <p className="text-3xl font-bold">฿{dailySales.todayProfit.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">฿{(parseFloat(dailySales.todayProfit) || 0).toLocaleString()}</p>
                   </div>
                   <TrendingUp className="w-12 h-12 text-purple-200" />
                 </div>
@@ -1460,7 +1511,7 @@ function App() {
                     <div>
                       <p className="text-blue-100">ยอดขายรวม</p>
                       <p className="text-2xl font-bold">
-                        ฿{analyticsData.totalRevenue.toLocaleString()}
+                        ฿{(parseFloat(analyticsData.totalRevenue) || 0).toLocaleString()}
                       </p>
                     </div>
                     <Receipt className="w-8 h-8 text-blue-200" />
@@ -1472,7 +1523,7 @@ function App() {
                     <div>
                       <p className="text-green-100">กำไรรวม</p>
                       <p className="text-2xl font-bold">
-                        ฿{analyticsData.totalProfit.toLocaleString()}
+                        ฿{(parseFloat(analyticsData.totalProfit) || 0).toLocaleString()}
                       </p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-green-200" />
@@ -1496,8 +1547,8 @@ function App() {
                     <div>
                       <p className="text-orange-100">อัตรากำไร</p>
                       <p className="text-2xl font-bold">
-                        {analyticsData.totalRevenue > 0 
-                          ? ((analyticsData.totalProfit / analyticsData.totalRevenue) * 100).toFixed(1)
+                        {(parseFloat(analyticsData.totalRevenue) || 0) > 0 
+                          ? (((parseFloat(analyticsData.totalProfit) || 0) / (parseFloat(analyticsData.totalRevenue) || 1)) * 100).toFixed(1)
                           : 0}%
                       </p>
                     </div>
@@ -1537,8 +1588,8 @@ function App() {
                       <div key={date} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                         <span className="font-medium">{date}</span>
                         <div className="text-right">
-                          <div className="text-thai-orange font-bold">฿{data.revenue.toLocaleString()}</div>
-                          <div className="text-sm text-gray-600">{data.orders} ออเดอร์</div>
+                          <div className="text-thai-orange font-bold">฿{(parseFloat(data.revenue) || 0).toLocaleString()}</div>
+                          <div className="text-sm text-gray-600">{parseInt(data.orders) || 0} ออเดอร์</div>
                         </div>
                       </div>
                     ))}
