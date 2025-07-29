@@ -254,6 +254,13 @@ function App() {
     analytics.totalRevenue = parseFloat(analytics.totalRevenue) || 0
     analytics.totalProfit = parseFloat(analytics.totalProfit) || 0
 
+    console.log('✅ Analytics calculated:', {
+      totalRevenue: analytics.totalRevenue,
+      totalProfit: analytics.totalProfit,
+      dailyCount: Object.keys(analytics.daily).length,
+      popularItemsCount: analytics.popularItems.length
+    })
+
     setAnalyticsData(analytics)
   }
 
@@ -1007,7 +1014,16 @@ function App() {
   )
 
   // หน้าวิเคราะห์ยอดขาย
-  const renderAnalytics = () => (
+  const renderAnalytics = () => {
+    console.log('🎨 Rendering analytics page with data:', analyticsData)
+    console.log('📊 Analytics values:', {
+      totalRevenue: analyticsData.totalRevenue,
+      totalProfit: analyticsData.totalProfit,
+      totalRevenueType: typeof analyticsData.totalRevenue,
+      totalProfitType: typeof analyticsData.totalProfit
+    })
+    
+    return (
     <div className="container mx-auto p-4">
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
         <div className="flex justify-between items-center mb-6">
@@ -1120,7 +1136,8 @@ function App() {
         </div>
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen thai-gradient-bg">
