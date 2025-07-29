@@ -4,6 +4,9 @@ import { Plus, Minus, ShoppingCart, Receipt, Coffee, Database, BarChart3, Settin
 const categories = ['ทั้งหมด', 'ชาไทย', 'ชาเขียว', 'กาแฟ', 'เครื่องดื่ม', 'Topping']
 
 function App() {
+  // State สำหรับการนำทาง
+  const [currentPage, setCurrentPage] = useState('main') // 'main', 'menu-manager', 'promotion-manager', 'analytics', 'daily-sales'
+  
   const [cart, setCart] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด')
   const [menuItems, setMenuItems] = useState([])
@@ -163,7 +166,7 @@ function App() {
     orders.forEach(order => {
       const date = new Date(order.created_at || order.timestamp)
       const dateStr = date.toLocaleDateString('th-TH')
-      const revenue = order.total_amount
+      const revenue = order.total || order.total_amount || 0
       const profit = order.items?.reduce((sum, item) => 
         sum + ((item.price - item.cost) * item.quantity), 0) || 0
 
@@ -203,7 +206,7 @@ function App() {
       return orderDate === today
     })
 
-    const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total_amount, 0)
+    const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total || order.total_amount || 0), 0)
     const todayProfit = todayOrders.reduce((sum, order) => 
       sum + (order.items?.reduce((itemSum, item) => 
         itemSum + ((item.price - item.cost) * item.quantity), 0) || 0), 0
@@ -223,13 +226,10 @@ function App() {
       setShowPasswordModal(false)
       setPassword('')
       
-      // ดำเนินการตาม action ที่รอ
-      if (pendingAction === 'menu-manager') {
-        setShowMenuManager(true)
-      } else if (pendingAction === 'promotion-management') {
-        setShowPromotionManager(true)
-      } else if (pendingAction === 'analytics') {
-        setShowAnalytics(true)
+      // เปลี่ยนหน้าตาม action ที่รอ
+      if (pendingAction) {
+        setCurrentPage(pendingAction)
+        setPendingAction('')
       }
       
       // ตั้งให้ session หมดอายุใน 30 นาที
@@ -245,19 +245,18 @@ function App() {
   // ฟังก์ชันขอการยืนยันตัวตน
   const requireAuthentication = (action) => {
     if (isAuthenticated) {
-      // หากยืนยันตัวตนแล้ว ดำเนินการเลย
-      if (action === 'menu-manager') {
-        setShowMenuManager(true)
-      } else if (action === 'promotion-management') {
-        setShowPromotionManager(true)
-      } else if (action === 'analytics') {
-        setShowAnalytics(true)
-      }
+      // หากยืนยันตัวตนแล้ว เปลี่ยนหน้าเลย
+      setCurrentPage(action)
     } else {
       // หากยังไม่ยืนยันตัวตน ขอรหัสผ่าน
       setPendingAction(action)
       setShowPasswordModal(true)
     }
+  }
+
+  // ฟังก์ชันการนำทางโดยไม่ต้องรหัสผ่าน
+  const navigateTo = (page) => {
+    setCurrentPage(page)
   }
 
   // เพิ่มสินค้าลงตะกร้า (แสดง popup แทน)
@@ -272,10 +271,7 @@ function App() {
     const finalItem = {
       ...item,
       toppings: toppings,
-      finalPrice: item.price + toppings.reduce((sum, topping) => sum + topping.price, 0),
-      displayName: toppings.length > 0 
-        ? `${item.name} + ${toppings.map(t => t.name).join(', ')}`
-        : item.name
+      finalPrice: item.price + toppings.reduce((sum, topping) => sum + topping.price, 0)
     }
 
     const existingItem = cart.find(cartItem => 
@@ -335,6 +331,8 @@ function App() {
 
   // ชำระเงิน
   const checkout = async () => {
+    console.log('🛒 Starting checkout process...')
+    
     if (cart.length === 0) {
       alert('ตะกร้าว่างเปล่า')
       return
@@ -343,42 +341,74 @@ function App() {
     const { total } = calculateTotal()
     const orderData = {
       items: cart,
-      total_amount: total,
+      total: total, // เปลี่ยนจาก total_amount เป็น total
+      order_id: `ORD-${String(Date.now()).slice(-6)}`,
+      final_total: total,
       promotion_id: selectedPromotion?.id || null,
+      promotion_name: selectedPromotion?.name || null,
       timestamp: new Date().toISOString(),
       formattedOrderId: `ORD-${String(Date.now()).slice(-6)}`
     }
 
+    console.log('📦 Order data:', orderData)
+    console.log('🛒 Cart items:', cart)
+    console.log('💰 Total amount:', total)
+
     try {
+      console.log('🌐 Sending request to /api/orders...')
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
       })
 
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response ok:', response.ok)
+
+      let newOrder
       if (response.ok) {
-        const newOrder = await response.json()
-        setOrders([...orders, newOrder])
-        setReceiptData(newOrder)
-        setShowReceipt(true)
-        setCart([])
-        setSelectedPromotion(null)
-        alert(`ชำระเงินสำเร็จ! ยอดรวม ฿${total}`)
+        newOrder = await response.json()
+        console.log('✅ Order saved to database:', newOrder)
+      } else {
+        const errorText = await response.text()
+        console.warn('⚠️ API failed with status:', response.status, 'Error:', errorText)
+        // ถ้า API ล้มเหลว ใช้ข้อมูลท้องถิ่น
+        newOrder = {
+          id: Date.now(),
+          ...orderData,
+          created_at: new Date().toISOString()
+        }
       }
-    } catch (error) {
-      console.error('Error creating order:', error)
-      // สำรองข้อมูลใน localStorage
-      const newOrder = {
-        id: Date.now(),
-        ...orderData,
-        created_at: new Date().toISOString()
-      }
+      
+      console.log('💾 Updating local state with order:', newOrder)
+      
+      // อัพเดทข้อมูลในแอพ
       setOrders([...orders, newOrder])
       setReceiptData(newOrder)
       setShowReceipt(true)
       setCart([])
       setSelectedPromotion(null)
-      alert(`ชำระเงินสำเร็จ! ยอดรวม ฿${total}`)
+      
+      console.log('✅ Checkout completed successfully!')
+      alert(`ชำระเงินสำเร็จ! ยอดรวม ฿${total.toLocaleString()}`)
+      
+    } catch (error) {
+      console.error('❌ Error creating order:', error)
+      // สำรองข้อมูลเมื่อเกิดข้อผิดพลาด
+      const newOrder = {
+        id: Date.now(),
+        ...orderData,
+        created_at: new Date().toISOString()
+      }
+      
+      console.log('💾 Using fallback order data:', newOrder)
+      
+      setOrders([...orders, newOrder])
+      setReceiptData(newOrder)
+      setShowReceipt(true)
+      setCart([])
+      setSelectedPromotion(null)
+      alert(`ชำระเงินสำเร็จ! (บันทึกท้องถิ่น) ยอดรวม ฿${total.toLocaleString()}`)
     }
   }
 
@@ -481,16 +511,516 @@ function App() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen thai-gradient-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin text-6xl mb-4">🚂</div>
-          <p className="text-xl text-white">กำลังโหลด POS ชา-มา-รถ-ไฟ...</p>
+  // ฟังก์ชันสำหรับ render เนื้อหาตามหน้าที่เลือก
+  const renderPageContent = () => {
+    switch (currentPage) {
+      case 'main':
+        return renderMainPage()
+      case 'menu-manager':
+        return renderMenuManager()
+      case 'promotion-manager':
+        return renderPromotionManager()
+      case 'analytics':
+        return renderAnalytics()
+      case 'daily-sales':
+        return renderDailySales()
+      default:
+        return renderMainPage()
+    }
+  }
+
+  // หน้าหลัก - POS
+  const renderMainPage = () => (
+    <div className="container mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Menu Section */}
+      <div className="lg:col-span-2">
+        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
+          {/* Category Filter */}
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2">
+              {categories.map(category => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    selectedCategory === category
+                      ? 'bg-thai-orange text-white shadow-lg'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Menu Items - แบ่งเป็น 70% เครื่องดื่ม และ 30% Topping */}
+          <div className="flex gap-4">
+            {/* เครื่องดื่ม 70% */}
+            <div className="w-[70%]">
+              <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-thai-orange pb-2">
+                🍃 เครื่องดื่ม 🍃
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {drinkItems.map(item => (
+                  <div key={item.id} className="menu-item-card group">
+                    <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">
+                      {item.image}
+                    </div>
+                    <h3 className="font-semibold text-gray-800 mb-1 text-sm">{item.name}</h3>
+                    <p className="text-thai-orange font-bold mb-2">฿{item.price}</p>
+                    <button
+                      onClick={() => addToCart(item)}
+                      className="btn-primary w-full text-sm"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      เลือก
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Topping 30% */}
+            <div className="w-[30%]">
+              <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-orange-400 pb-2">
+                🧡 Topping 🧡
+              </h2>
+              <div className="grid grid-cols-1 gap-3">
+                {toppingItems.map(item => (
+                  <div key={item.id} className="menu-item-card group bg-orange-50">
+                    <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">
+                      {item.image}
+                    </div>
+                    <h3 className="font-semibold text-gray-800 mb-1 text-xs">{item.name}</h3>
+                    <p className="text-orange-600 font-bold mb-2 text-sm">+฿{item.price}</p>
+                    <button
+                      onClick={() => addToCart(item)}
+                      className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs w-full transition-colors"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      เพิ่ม
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    )
-  }
+
+      {/* Cart Section */}
+      <div>
+        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism sticky top-4">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
+            <ShoppingCart className="w-6 h-6 mr-2 text-thai-orange" />
+            ตะกร้าสินค้า ({cart.length})
+          </h2>
+          
+          {cart.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <Coffee className="w-12 h-12 mx-auto mb-2 opacity-30" />
+              <p>ตะกร้าว่างเปล่า</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {cart.map(item => (
+                <div key={`${item.id}-${JSON.stringify(item.toppings || [])}`} className="cart-item">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-800">{item.name}</h4>
+                      <p className="text-sm text-gray-600">฿{item.finalPrice || item.price} x {item.quantity}</p>
+                      {item.toppings && item.toppings.length > 0 && (
+                        <div className="ml-4 mt-1">
+                          {item.toppings.map(topping => (
+                            <p key={topping.id} className="text-xs text-orange-600 flex items-center">
+                              <span className="mr-1">•</span>
+                              {topping.name}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => updateCartQuantity(item.id, 0, item.toppings)}
+                      className="text-red-500 hover:text-red-700 ml-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => updateCartQuantity(item.id, item.quantity - 1, item.toppings)}
+                        className="btn-secondary p-1"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="font-medium">{item.quantity}</span>
+                      <button
+                        onClick={() => updateCartQuantity(item.id, item.quantity + 1, item.toppings)}
+                        className="btn-secondary p-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <span className="font-bold text-thai-orange">
+                      ฿{((item.finalPrice || item.price) * item.quantity).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Promotion Section */}
+              {selectedPromotion && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-green-800">{selectedPromotion.name}</p>
+                      <p className="text-sm text-green-600">{selectedPromotion.description}</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedPromotion(null)}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="border-t pt-4 mt-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>ยอดรวม:</span>
+                    <span>฿{calculateTotal().subtotal.toLocaleString()}</span>
+                  </div>
+                  {selectedPromotion && (
+                    <div className="flex justify-between text-green-600">
+                      <span>ส่วนลด:</span>
+                      <span>-฿{calculateTotal().discount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-xl font-bold border-t pt-2">
+                    <span>ยอดสุทธิ:</span>
+                    <span className="text-thai-orange">฿{calculateTotal().total.toLocaleString()}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={checkout}
+                  className="btn-primary w-full mt-4 text-lg py-3"
+                >
+                  <Receipt className="w-5 h-5 mr-2" />
+                  ชำระเงิน
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  // หน้าจัดการเมนู
+  const renderMenuManager = () => (
+    <div className="container mx-auto p-4">
+      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+            <Settings className="w-8 h-8 mr-3 text-thai-orange" />
+            จัดการเมนู
+          </h2>
+          <button
+            onClick={() => navigateTo('main')}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            กลับหน้าหลัก
+          </button>
+        </div>
+
+        {/* Add New Item Form */}
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <h3 className="text-lg font-semibold mb-4">เพิ่มเมนูใหม่</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="ชื่อเมนู"
+              value={newItem.name}
+              onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+              className="border rounded-lg px-3 py-2"
+            />
+            <input
+              type="number"
+              placeholder="ราคาขาย"
+              value={newItem.price}
+              onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+              className="border rounded-lg px-3 py-2"
+            />
+            <input
+              type="number"
+              placeholder="ต้นทุน"
+              value={newItem.cost}
+              onChange={(e) => setNewItem({...newItem, cost: e.target.value})}
+              className="border rounded-lg px-3 py-2"
+            />
+            <select
+              value={newItem.category}
+              onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+              className="border rounded-lg px-3 py-2"
+            >
+              {categories.filter(cat => cat !== 'ทั้งหมด').map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={addMenuItem}
+            className="mt-4 bg-thai-orange text-white px-4 py-2 rounded-lg hover:bg-thai-orange-dark"
+          >
+            เพิ่มเมนู
+          </button>
+        </div>
+
+        {/* Menu Items List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {menuItems.map(item => (
+            <div key={item.id} className="border rounded-lg p-4">
+              <div className="text-2xl mb-2">{item.image}</div>
+              <h4 className="font-semibold">{item.name}</h4>
+              <p className="text-thai-orange font-bold">฿{item.price}</p>
+              <p className="text-sm text-gray-600">ต้นทุน: ฿{item.cost}</p>
+              <p className="text-xs text-gray-500">{item.category}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  // หน้าจัดการโปรโมชั่น
+  const renderPromotionManager = () => (
+    <div className="container mx-auto p-4">
+      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+            <Receipt className="w-8 h-8 mr-3 text-thai-orange" />
+            จัดการโปรโมชั่น
+          </h2>
+          <button
+            onClick={() => navigateTo('main')}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            กลับหน้าหลัก
+          </button>
+        </div>
+
+        {/* Promotions List */}
+        <div className="space-y-4">
+          {promotions.map(promo => (
+            <div key={promo.id} className="border rounded-lg p-4">
+              <h4 className="font-semibold text-lg">{promo.name}</h4>
+              <p className="text-gray-600">{promo.description}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                <span className="bg-thai-orange text-white px-2 py-1 rounded">
+                  {promo.discount_type === 'percentage' 
+                    ? `ลด ${promo.discount_value}%` 
+                    : `ลด ฿${promo.discount_value}`
+                  }
+                </span>
+                {promo.min_amount && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    ขั้นต่ำ ฿{promo.min_amount}
+                  </span>
+                )}
+                <span className={`px-2 py-1 rounded ${promo.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {promo.is_active ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  // หน้ายอดขายวันนี้
+  const renderDailySales = () => (
+    <div className="container mx-auto p-4">
+      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold text-gray-800 flex items-center">
+            <Calendar className="w-8 h-8 mr-3 text-thai-orange" />
+            ยอดขายวันนี้
+          </h3>
+          <button
+            onClick={() => navigateTo('main')}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            กลับหน้าหลัก
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm">ยอดขายวันนี้</p>
+                <p className="text-3xl font-bold">฿{dailySales.today.toLocaleString()}</p>
+              </div>
+              <Receipt className="w-12 h-12 text-blue-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">จำนวนออเดอร์</p>
+                <p className="text-3xl font-bold">{dailySales.todayOrders} ออเดอร์</p>
+              </div>
+              <ShoppingCart className="w-12 h-12 text-green-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm">กำไรวันนี้</p>
+                <p className="text-3xl font-bold">฿{dailySales.todayProfit.toLocaleString()}</p>
+              </div>
+              <TrendingUp className="w-12 h-12 text-purple-200" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-6 text-center">
+          <p className="text-gray-600">
+            📅 {new Date().toLocaleDateString('th-TH', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+
+  // หน้าวิเคราะห์ยอดขาย
+  const renderAnalytics = () => (
+    <div className="container mx-auto p-4">
+      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+            <TrendingUp className="w-8 h-8 mr-3 text-thai-orange" />
+            วิเคราะห์ยอดขาย
+          </h2>
+          <button
+            onClick={() => navigateTo('main')}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            กลับหน้าหลัก
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100">ยอดขายรวม</p>
+                <p className="text-2xl font-bold">
+                  ฿{analyticsData.totalRevenue.toLocaleString()}
+                </p>
+              </div>
+              <Receipt className="w-8 h-8 text-blue-200" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100">กำไรรวม</p>
+                <p className="text-2xl font-bold">
+                  ฿{analyticsData.totalProfit.toLocaleString()}
+                </p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-200" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100">จำนวนออเดอร์</p>
+                <p className="text-2xl font-bold">
+                  {orders.length.toLocaleString()}
+                </p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-purple-200" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100">อัตรากำไร</p>
+                <p className="text-2xl font-bold">
+                  {analyticsData.totalRevenue > 0 
+                    ? ((analyticsData.totalProfit / analyticsData.totalRevenue) * 100).toFixed(1)
+                    : 0}%
+                </p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-orange-200" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-lg border shadow-sm">
+            <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
+              <PieChart className="w-6 h-6 mr-2" />
+              สินค้ายอดนิยม
+            </h3>
+            {analyticsData.popularItems.length > 0 ? (
+              <div className="space-y-2">
+                {analyticsData.popularItems.map((item, index) => (
+                  <div key={item.name} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span className="font-medium">#{index + 1} {item.name}</span>
+                    <span className="text-thai-orange font-bold">{item.count} ชิ้น</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>ยังไม่มีข้อมูลการขาย</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white p-6 rounded-lg border shadow-sm">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">ยอดขายรายวัน</h3>
+            {Object.keys(analyticsData.daily).length > 0 ? (
+              <div className="space-y-2">
+                {Object.entries(analyticsData.daily).slice(-7).map(([date, data]) => (
+                  <div key={date} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span className="font-medium">{date}</span>
+                    <div className="text-right">
+                      <div className="text-thai-orange font-bold">฿{data.revenue.toLocaleString()}</div>
+                      <div className="text-sm text-gray-600">{data.orders} ออเดอร์</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>ยังไม่มีข้อมูลการขาย</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen thai-gradient-bg">
@@ -506,38 +1036,53 @@ function App() {
               POS CHA MA ROD FAI (ชา-มา-รถ-ไฟ) ☕🚂
             </h1>
           </div>
-          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 overflow-x-auto">
+              onClick={() => navigateTo('main')}
+              className={`px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap ${
+                currentPage === 'main' ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'
+              }`}
+            >
+              <Coffee className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm lg:text-base">หน้าหลัก</span>
+            </button>
             <button
               onClick={() => requireAuthentication('menu-manager')}
-              className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
+              className={`px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap ${
+                currentPage === 'menu-manager' ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'
+              }`}
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline text-sm lg:text-base">จัดการเมนู</span>
             </button>
             <button
-              onClick={() => setShowPromotionModal(true)}
+              onClick={() => setShowPromotionModal(!showPromotionModal)}
               className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
             >
               <Receipt className="w-4 h-4" />
               <span className="hidden md:inline text-sm lg:text-base">โปรโมชั่น</span>
             </button>
             <button
-              onClick={() => requireAuthentication('promotion-management')}
-              className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
+              onClick={() => requireAuthentication('promotion-manager')}
+              className={`px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap ${
+                currentPage === 'promotion-manager' ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'
+              }`}
             >
               <Settings className="w-4 h-4" />
               <span className="hidden lg:inline text-sm lg:text-base">จัดการโปรโมชั่น</span>
             </button>
             <button
-              onClick={() => setShowDailySales(true)}
-              className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
+              onClick={() => navigateTo('daily-sales')}
+              className={`px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap ${
+                currentPage === 'daily-sales' ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'
+              }`}
             >
               <Calendar className="w-4 h-4" />
               <span className="hidden md:inline text-sm lg:text-base">ยอดขายวันนี้</span>
             </button>
             <button
               onClick={() => requireAuthentication('analytics')}
-              className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
+              className={`px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap ${
+                currentPage === 'analytics' ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'
+              }`}
             >
               <TrendingUp className="w-4 h-4" />
               <span className="hidden md:inline text-sm lg:text-base">วิเคราะห์ยอดขาย</span>
@@ -551,187 +1096,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Menu Section */}
-        <div className="lg:col-span-2">
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism">
-            {/* Category Filter */}
-            <div className="mb-6">
-              <div className="flex flex-wrap gap-2">
-                {categories.map(category => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      selectedCategory === category
-                        ? 'bg-thai-orange text-white shadow-lg'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Menu Items - แบ่ง 70% เครื่องดื่ม 30% Topping */}
-            <div className="flex gap-4">
-              {/* เครื่องดื่ม 70% */}
-              <div className="w-[70%]">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-thai-orange pb-2">
-                  🍃 เครื่องดื่ม 🍃
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {drinkItems.map(item => (
-                    <div key={item.id} className="menu-item-card group">
-                      <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">
-                        {item.image}
-                      </div>
-                      <h3 className="font-semibold text-gray-800 mb-1 text-sm">{item.name}</h3>
-                      <p className="text-thai-orange font-bold mb-2">฿{item.price}</p>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="btn-primary w-full text-sm"
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        เลือก
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Topping 30% */}
-              <div className="w-[30%]">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-orange-400 pb-2">
-                  🧡 Topping 🧡
-                </h2>
-                <div className="grid grid-cols-1 gap-3">
-                  {toppingItems.map(item => (
-                    <div key={item.id} className="menu-item-card group bg-orange-50">
-                      <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">
-                        {item.image}
-                      </div>
-                      <h3 className="font-semibold text-gray-800 mb-1 text-xs">{item.name}</h3>
-                      <p className="text-orange-600 font-bold mb-2 text-sm">+฿{item.price}</p>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs w-full transition-colors"
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        เพิ่ม
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cart Section */}
-        <div>
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-6 glass-morphism sticky top-4">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-              <ShoppingCart className="w-6 h-6 mr-2 text-thai-orange" />
-              ตะกร้าสินค้า ({cart.length})
-            </h2>
-            
-            {cart.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <Coffee className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p>ตะกร้าว่างเปล่า</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cart.map(item => (
-                  <div key={`${item.id}-${JSON.stringify(item.toppings || [])}`} className="cart-item">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-800">{item.displayName || item.name}</h4>
-                        <p className="text-sm text-gray-600">฿{item.finalPrice || item.price} x {item.quantity}</p>
-                        {item.toppings && item.toppings.length > 0 && (
-                          <p className="text-xs text-orange-600">+ {item.toppings.map(t => t.name).join(', ')}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => updateCartQuantity(item.id, 0, item.toppings)}
-                        className="text-red-500 hover:text-red-700 ml-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity - 1, item.toppings)}
-                          className="btn-secondary p-1"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity + 1, item.toppings)}
-                          className="btn-secondary p-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <span className="font-bold text-thai-orange">
-                        ฿{((item.finalPrice || item.price) * item.quantity).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Promotion Section */}
-                {selectedPromotion && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-green-800">{selectedPromotion.name}</p>
-                        <p className="text-sm text-green-600">{selectedPromotion.description}</p>
-                      </div>
-                      <button
-                        onClick={() => setSelectedPromotion(null)}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="border-t pt-4 mt-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>ยอดรวม:</span>
-                      <span>฿{calculateTotal().subtotal.toLocaleString()}</span>
-                    </div>
-                    {selectedPromotion && (
-                      <div className="flex justify-between text-green-600">
-                        <span>ส่วนลด:</span>
-                        <span>-฿{calculateTotal().discount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center text-xl font-bold border-t pt-2">
-                      <span>ยอดสุทธิ:</span>
-                      <span className="text-thai-orange">฿{calculateTotal().total.toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={checkout}
-                    className="btn-primary w-full mt-4 text-lg py-3"
-                  >
-                    <Receipt className="w-5 h-5 mr-2" />
-                    ชำระเงิน
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {renderPageContent()}
 
       {/* Password Modal */}
       {showPasswordModal && (
@@ -1028,8 +1393,8 @@ function App() {
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-100 text-sm font-medium">ยอดขายวันนี้</p>
-                    <p className="text-3xl font-bold font-sans">฿{dailySales.today.toLocaleString('th-TH')}</p>
+                    <p className="text-blue-100 text-sm">ยอดขายวันนี้</p>
+                    <p className="text-3xl font-bold">฿{dailySales.today.toLocaleString()}</p>
                   </div>
                   <Receipt className="w-12 h-12 text-blue-200" />
                 </div>
@@ -1038,8 +1403,8 @@ function App() {
               <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-green-100 text-sm font-medium">จำนวนออเดอร์</p>
-                    <p className="text-3xl font-bold font-sans">{dailySales.todayOrders.toLocaleString('th-TH')} ออเดอร์</p>
+                    <p className="text-green-100 text-sm">จำนวนออเดอร์</p>
+                    <p className="text-3xl font-bold">{dailySales.todayOrders} ออเดอร์</p>
                   </div>
                   <ShoppingCart className="w-12 h-12 text-green-200" />
                 </div>
@@ -1048,8 +1413,8 @@ function App() {
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-purple-100 text-sm font-medium">กำไรวันนี้</p>
-                    <p className="text-3xl font-bold font-sans">฿{dailySales.todayProfit.toLocaleString('th-TH')}</p>
+                    <p className="text-purple-100 text-sm">กำไรวันนี้</p>
+                    <p className="text-3xl font-bold">฿{dailySales.todayProfit.toLocaleString()}</p>
                   </div>
                   <TrendingUp className="w-12 h-12 text-purple-200" />
                 </div>
@@ -1093,9 +1458,9 @@ function App() {
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-blue-100 font-medium">ยอดขายรวม</p>
-                      <p className="text-2xl font-bold font-sans">
-                        ฿{analyticsData.totalRevenue.toLocaleString('th-TH')}
+                      <p className="text-blue-100">ยอดขายรวม</p>
+                      <p className="text-2xl font-bold">
+                        ฿{analyticsData.totalRevenue.toLocaleString()}
                       </p>
                     </div>
                     <Receipt className="w-8 h-8 text-blue-200" />
@@ -1105,9 +1470,9 @@ function App() {
                 <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-100 font-medium">กำไรรวม</p>
-                      <p className="text-2xl font-bold font-sans">
-                        ฿{analyticsData.totalProfit.toLocaleString('th-TH')}
+                      <p className="text-green-100">กำไรรวม</p>
+                      <p className="text-2xl font-bold">
+                        ฿{analyticsData.totalProfit.toLocaleString()}
                       </p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-green-200" />
@@ -1117,9 +1482,9 @@ function App() {
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-purple-100 font-medium">จำนวนออเดอร์</p>
-                      <p className="text-2xl font-bold font-sans">
-                        {orders.length.toLocaleString('th-TH')} ออเดอร์
+                      <p className="text-purple-100">จำนวนออเดอร์</p>
+                      <p className="text-2xl font-bold">
+                        {orders.length.toLocaleString()}
                       </p>
                     </div>
                     <ShoppingCart className="w-8 h-8 text-purple-200" />
@@ -1129,8 +1494,8 @@ function App() {
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-orange-100 font-medium">อัตรากำไร</p>
-                      <p className="text-2xl font-bold font-sans">
+                      <p className="text-orange-100">อัตรากำไร</p>
+                      <p className="text-2xl font-bold">
                         {analyticsData.totalRevenue > 0 
                           ? ((analyticsData.totalProfit / analyticsData.totalRevenue) * 100).toFixed(1)
                           : 0}%
@@ -1191,8 +1556,14 @@ function App() {
 
       {/* Add to Cart Modal */}
       {showAddToCartModal && selectedMenuItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto animate-slideIn" style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 9999
+          }}>
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold">เพิ่มลงตะกร้า</h3>
@@ -1298,57 +1669,98 @@ function App() {
 
       {/* Receipt Modal */}
       {showReceipt && receiptData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-slideIn" style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 9999
+          }}>
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">ใบเสร็จรับเงิน</h3>
+                <h3 className="text-xl font-bold text-thai-orange flex items-center">
+                  <Receipt className="w-6 h-6 mr-2" />
+                  ใบเสร็จรับเงิน
+                </h3>
                 <button
                   onClick={() => setShowReceipt(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <div id="receipt-content" className="bg-white p-4 text-sm">
-                <div className="text-center mb-4">
-                  <h2 className="font-bold text-lg">POS CHA MA ROD FAI</h2>
-                  <p className="text-xs">ชา-มา-รถ-ไฟ</p>
-                  <p className="text-xs">🚂☕</p>
+              <div id="receipt-content" className="bg-gradient-to-b from-orange-50 to-white p-6 rounded-lg border-2 border-orange-200">
+                <div className="text-center mb-6">
+                  <div className="text-4xl mb-2">🚂☕</div>
+                  <h2 className="font-bold text-xl text-thai-orange">POS CHA MA ROD FAI</h2>
+                  <p className="text-sm text-gray-600">ชา-มา-รถ-ไฟ</p>
+                  <div className="w-full h-1 bg-gradient-to-r from-orange-300 via-thai-orange to-orange-600 rounded mt-2"></div>
                 </div>
                 
-                <div className="border-t border-b py-2 mb-4">
-                  <p><strong>Order ID:</strong> {receiptData.formattedOrderId}</p>
-                  <p><strong>วันที่:</strong> {new Date(receiptData.timestamp).toLocaleString('th-TH')}</p>
+                <div className="bg-white p-4 rounded-lg border border-orange-200 mb-4">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-600">Order ID:</span>
+                      <p className="font-bold text-thai-orange">{receiptData.order_id || receiptData.formattedOrderId}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">วันที่:</span>
+                      <p className="font-bold">{new Date(receiptData.created_at || receiptData.timestamp).toLocaleString('th-TH')}</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="space-y-1 mb-4">
+                <div className="space-y-2 mb-4">
+                  <h4 className="font-semibold text-gray-800 border-b border-orange-200 pb-1">รายการสินค้า</h4>
                   {receiptData.items.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{item.name} x{item.quantity}</span>
-                      <span>฿{(item.price * item.quantity).toLocaleString()}</span>
+                    <div key={index} className="flex justify-between items-center py-1">
+                      <div className="flex-1">
+                        <span className="font-medium">{item.name}</span>
+                        {item.toppings && item.toppings.length > 0 && (
+                          <div className="text-xs text-orange-600 ml-2">
+                            {item.toppings.map(topping => (
+                              <div key={topping.id}>• {topping.name}</div>
+                            ))}
+                          </div>
+                        )}
+                        <span className="text-sm text-gray-600"> x{item.quantity}</span>
+                      </div>
+                      <span className="font-bold text-thai-orange">
+                        ฿{((item.finalPrice || item.price) * item.quantity).toLocaleString()}
+                      </span>
                     </div>
                   ))}
                 </div>
                 
-                <div className="border-t pt-2">
-                  <div className="flex justify-between font-bold">
-                    <span>ยอดรวม</span>
-                    <span>฿{receiptData.total_amount.toLocaleString()}</span>
+                <div className="border-t-2 border-thai-orange pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold">ยอดรวมทั้งสิ้น</span>
+                    <span className="text-2xl font-bold text-thai-orange">
+                      ฿{(receiptData.total || receiptData.final_total || receiptData.total_amount || 0).toLocaleString()}
+                    </span>
                   </div>
                 </div>
                 
-                <div className="text-center mt-4 text-xs">
-                  <p>ขอบคุณที่ใช้บริการ</p>
-                  <p>🙏 สวัสดี 🙏</p>
+                <div className="text-center mt-6 text-sm text-gray-600">
+                  <div className="w-full h-1 bg-gradient-to-r from-orange-300 via-thai-orange to-orange-600 rounded mb-2"></div>
+                  <p className="font-medium">ขอบคุณที่ใช้บริการ</p>
+                  <p>🙏 สวัสดีครับ/ค่ะ 🙏</p>
+                  <p className="text-xs mt-2">💝 หวังว่าจะได้รับใช้อีกครั้ง 💝</p>
                 </div>
               </div>
               
-              <div className="flex space-x-3 mt-4">
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowReceipt(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  ปิด
+                </button>
                 <button
                   onClick={() => window.print()}
-                  className="flex-1 bg-thai-orange text-white px-4 py-2 rounded-lg hover:bg-thai-orange-dark transition-colors flex items-center justify-center"
+                  className="flex-1 bg-thai-orange text-white px-4 py-3 rounded-lg hover:bg-thai-orange-dark transition-colors flex items-center justify-center font-medium"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   พิมพ์ใบเสร็จ
