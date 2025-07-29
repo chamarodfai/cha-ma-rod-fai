@@ -515,7 +515,7 @@ function App() {
               <span className="hidden sm:inline text-sm lg:text-base">จัดการเมนู</span>
             </button>
             <button
-              onClick={() => setShowPromotionModal(!showPromotionModal)}
+              onClick={() => setShowPromotionModal(true)}
               className="bg-white/20 hover:bg-white/30 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
             >
               <Receipt className="w-4 h-4" />
