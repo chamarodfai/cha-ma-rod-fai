@@ -17,6 +17,9 @@ function App() {
   const [selectedDrink, setSelectedDrink] = useState(null)
   const [selectedToppings, setSelectedToppings] = useState([])
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showToppingModal, setShowToppingModal] = useState(false)
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false)
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null)
   
   // States สำหรับระบบโปรโมชั่น
   const [promotions, setPromotions] = useState([])
@@ -257,42 +260,66 @@ function App() {
     }
   }
 
-  // เพิ่มสินค้าลงตะกร้า
+  // เพิ่มสินค้าลงตะกร้า (แสดง popup แทน)
   const addToCart = (item) => {
-    if (item.category === 'Topping') {
-      // Topping ต้องเลือกเครื่องดื่มก่อน
-      if (cart.length === 0 || !cart.some(cartItem => cartItem.category !== 'Topping')) {
-        alert('กรุณาเลือกเครื่องดื่มก่อนเพิ่ม Topping')
-        return
-      }
+    setSelectedMenuItem(item)
+    setShowAddToCartModal(true)
+  }
+
+  // เพิ่มสินค้าลงตะกร้าจริง
+  const confirmAddToCart = (item, toppings = []) => {
+    // รวม topping กับเครื่องดื่ม
+    const finalItem = {
+      ...item,
+      toppings: toppings,
+      finalPrice: item.price + toppings.reduce((sum, topping) => sum + topping.price, 0),
+      displayName: toppings.length > 0 
+        ? `${item.name} + ${toppings.map(t => t.name).join(', ')}`
+        : item.name
     }
 
-    const existingItem = cart.find(cartItem => cartItem.id === item.id)
+    const existingItem = cart.find(cartItem => 
+      cartItem.id === item.id && 
+      JSON.stringify(cartItem.toppings || []) === JSON.stringify(toppings)
+    )
+    
     if (existingItem) {
       setCart(cart.map(cartItem =>
-        cartItem.id === item.id
+        cartItem.id === item.id && 
+        JSON.stringify(cartItem.toppings || []) === JSON.stringify(toppings)
           ? { ...cartItem, quantity: cartItem.quantity + 1 }
           : cartItem
       ))
     } else {
-      setCart([...cart, { ...item, quantity: 1 }])
+      setCart([...cart, { ...finalItem, quantity: 1, id: Date.now() }])
     }
+
+    setShowAddToCartModal(false)
+    setSelectedMenuItem(null)
+    setSelectedToppings([])
   }
 
   // ปรับจำนวนสินค้าในตะกร้า
-  const updateCartQuantity = (itemId, newQuantity) => {
+  const updateCartQuantity = (itemId, newQuantity, toppings = []) => {
     if (newQuantity <= 0) {
-      setCart(cart.filter(item => item.id !== itemId))
+      setCart(cart.filter(item => 
+        !(item.id === itemId && JSON.stringify(item.toppings || []) === JSON.stringify(toppings))
+      ))
     } else {
       setCart(cart.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
+        item.id === itemId && JSON.stringify(item.toppings || []) === JSON.stringify(toppings)
+          ? { ...item, quantity: newQuantity } 
+          : item
       ))
     }
   }
 
   // คำนวณยอดรวม
   const calculateTotal = () => {
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    const subtotal = cart.reduce((sum, item) => {
+      const itemPrice = item.finalPrice || item.price
+      return sum + (itemPrice * item.quantity)
+    }, 0)
     let discount = 0
     
     if (selectedPromotion) {
@@ -439,6 +466,10 @@ function App() {
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory)
 
+  // แยกเครื่องดื่มและ Topping
+  const drinkItems = filteredMenuItems.filter(item => item.category !== 'Topping')
+  const toppingItems = menuItems.filter(item => item.category === 'Topping')
+
   // ตรวจสอบโปรโมชั่นที่ใช้ได้
   const getAvailablePromotions = () => {
     const { subtotal } = calculateTotal()
@@ -543,28 +574,57 @@ function App() {
               </div>
             </div>
 
-            {/* Menu Items */}
-            <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b-2 border-thai-orange pb-2">
-              🍃 เมนูเครื่องดื่ม 🍃
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredMenuItems.map(item => (
-                <div key={item.id} className="menu-item-card group">
-                  <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
-                    {item.image}
-                  </div>
-                  <h3 className="font-semibold text-gray-800 mb-1">{item.name}</h3>
-                  <p className="text-thai-orange font-bold mb-2">฿{item.price}</p>
-                  <p className="text-xs text-gray-500 mb-3">{item.category}</p>
-                  <button
-                    onClick={() => addToCart(item)}
-                    className="btn-primary w-full"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    เพิ่ม
-                  </button>
+            {/* Menu Items - แบ่ง 70% เครื่องดื่ม 30% Topping */}
+            <div className="flex gap-4">
+              {/* เครื่องดื่ม 70% */}
+              <div className="w-[70%]">
+                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-thai-orange pb-2">
+                  🍃 เครื่องดื่ม 🍃
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {drinkItems.map(item => (
+                    <div key={item.id} className="menu-item-card group">
+                      <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">
+                        {item.image}
+                      </div>
+                      <h3 className="font-semibold text-gray-800 mb-1 text-sm">{item.name}</h3>
+                      <p className="text-thai-orange font-bold mb-2">฿{item.price}</p>
+                      <button
+                        onClick={() => addToCart(item)}
+                        className="btn-primary w-full text-sm"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        เลือก
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              
+              {/* Topping 30% */}
+              <div className="w-[30%]">
+                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b-2 border-orange-400 pb-2">
+                  🧡 Topping 🧡
+                </h2>
+                <div className="grid grid-cols-1 gap-3">
+                  {toppingItems.map(item => (
+                    <div key={item.id} className="menu-item-card group bg-orange-50">
+                      <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">
+                        {item.image}
+                      </div>
+                      <h3 className="font-semibold text-gray-800 mb-1 text-xs">{item.name}</h3>
+                      <p className="text-orange-600 font-bold mb-2 text-sm">+฿{item.price}</p>
+                      <button
+                        onClick={() => addToCart(item)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs w-full transition-colors"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        เพิ่ม
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -585,14 +645,17 @@ function App() {
             ) : (
               <div className="space-y-3">
                 {cart.map(item => (
-                  <div key={item.id} className="cart-item">
+                  <div key={`${item.id}-${JSON.stringify(item.toppings || [])}`} className="cart-item">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-800">{item.name}</h4>
-                        <p className="text-sm text-gray-600">฿{item.price} x {item.quantity}</p>
+                        <h4 className="font-medium text-gray-800">{item.displayName || item.name}</h4>
+                        <p className="text-sm text-gray-600">฿{item.finalPrice || item.price} x {item.quantity}</p>
+                        {item.toppings && item.toppings.length > 0 && (
+                          <p className="text-xs text-orange-600">+ {item.toppings.map(t => t.name).join(', ')}</p>
+                        )}
                       </div>
                       <button
-                        onClick={() => updateCartQuantity(item.id, 0)}
+                        onClick={() => updateCartQuantity(item.id, 0, item.toppings)}
                         className="text-red-500 hover:text-red-700 ml-2"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -601,21 +664,21 @@ function App() {
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateCartQuantity(item.id, item.quantity - 1, item.toppings)}
                           className="btn-secondary p-1"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateCartQuantity(item.id, item.quantity + 1, item.toppings)}
                           className="btn-secondary p-1"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
                       <span className="font-bold text-thai-orange">
-                        ฿{(item.price * item.quantity).toLocaleString()}
+                        ฿{((item.finalPrice || item.price) * item.quantity).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -965,8 +1028,8 @@ function App() {
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-100 text-sm">ยอดขายวันนี้</p>
-                    <p className="text-3xl font-bold">฿{dailySales.today.toLocaleString()}</p>
+                    <p className="text-blue-100 text-sm font-medium">ยอดขายวันนี้</p>
+                    <p className="text-3xl font-bold font-sans">฿{dailySales.today.toLocaleString('th-TH')}</p>
                   </div>
                   <Receipt className="w-12 h-12 text-blue-200" />
                 </div>
@@ -975,8 +1038,8 @@ function App() {
               <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-green-100 text-sm">จำนวนออเดอร์</p>
-                    <p className="text-3xl font-bold">{dailySales.todayOrders} ออเดอร์</p>
+                    <p className="text-green-100 text-sm font-medium">จำนวนออเดอร์</p>
+                    <p className="text-3xl font-bold font-sans">{dailySales.todayOrders.toLocaleString('th-TH')} ออเดอร์</p>
                   </div>
                   <ShoppingCart className="w-12 h-12 text-green-200" />
                 </div>
@@ -985,8 +1048,8 @@ function App() {
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-purple-100 text-sm">กำไรวันนี้</p>
-                    <p className="text-3xl font-bold">฿{dailySales.todayProfit.toLocaleString()}</p>
+                    <p className="text-purple-100 text-sm font-medium">กำไรวันนี้</p>
+                    <p className="text-3xl font-bold font-sans">฿{dailySales.todayProfit.toLocaleString('th-TH')}</p>
                   </div>
                   <TrendingUp className="w-12 h-12 text-purple-200" />
                 </div>
@@ -1030,9 +1093,9 @@ function App() {
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-blue-100">ยอดขายรวม</p>
-                      <p className="text-2xl font-bold">
-                        ฿{analyticsData.totalRevenue.toLocaleString()}
+                      <p className="text-blue-100 font-medium">ยอดขายรวม</p>
+                      <p className="text-2xl font-bold font-sans">
+                        ฿{analyticsData.totalRevenue.toLocaleString('th-TH')}
                       </p>
                     </div>
                     <Receipt className="w-8 h-8 text-blue-200" />
@@ -1042,9 +1105,9 @@ function App() {
                 <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-100">กำไรรวม</p>
-                      <p className="text-2xl font-bold">
-                        ฿{analyticsData.totalProfit.toLocaleString()}
+                      <p className="text-green-100 font-medium">กำไรรวม</p>
+                      <p className="text-2xl font-bold font-sans">
+                        ฿{analyticsData.totalProfit.toLocaleString('th-TH')}
                       </p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-green-200" />
@@ -1054,9 +1117,9 @@ function App() {
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-purple-100">จำนวนออเดอร์</p>
-                      <p className="text-2xl font-bold">
-                        {orders.length.toLocaleString()}
+                      <p className="text-purple-100 font-medium">จำนวนออเดอร์</p>
+                      <p className="text-2xl font-bold font-sans">
+                        {orders.length.toLocaleString('th-TH')} ออเดอร์
                       </p>
                     </div>
                     <ShoppingCart className="w-8 h-8 text-purple-200" />
@@ -1066,8 +1129,8 @@ function App() {
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-orange-100">อัตรากำไร</p>
-                      <p className="text-2xl font-bold">
+                      <p className="text-orange-100 font-medium">อัตรากำไร</p>
+                      <p className="text-2xl font-bold font-sans">
                         {analyticsData.totalRevenue > 0 
                           ? ((analyticsData.totalProfit / analyticsData.totalRevenue) * 100).toFixed(1)
                           : 0}%
@@ -1120,6 +1183,113 @@ function App() {
                     <p>ยังไม่มีข้อมูลการขาย</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add to Cart Modal */}
+      {showAddToCartModal && selectedMenuItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">เพิ่มลงตะกร้า</h3>
+                <button
+                  onClick={() => {
+                    setShowAddToCartModal(false)
+                    setSelectedMenuItem(null)
+                    setSelectedToppings([])
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Selected Item */}
+              <div className="border rounded-lg p-4 mb-4 bg-gray-50">
+                <div className="flex items-center space-x-3">
+                  <div className="text-3xl">{selectedMenuItem.image}</div>
+                  <div>
+                    <h4 className="font-semibold text-lg">{selectedMenuItem.name}</h4>
+                    <p className="text-thai-orange font-bold">฿{selectedMenuItem.price}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Topping Selection */}
+              {selectedMenuItem.category !== 'Topping' && (
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-3">เลือก Topping (ไม่บังคับ)</h4>
+                  <div className="space-y-2">
+                    {toppingItems.map(topping => (
+                      <div key={topping.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                        <div className="flex items-center space-x-3">
+                          <div className="text-2xl">{topping.image}</div>
+                          <div>
+                            <span className="font-medium">{topping.name}</span>
+                            <span className="text-orange-600 font-bold ml-2">+฿{topping.price}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const isSelected = selectedToppings.find(t => t.id === topping.id)
+                            if (isSelected) {
+                              setSelectedToppings(selectedToppings.filter(t => t.id !== topping.id))
+                            } else {
+                              setSelectedToppings([...selectedToppings, topping])
+                            }
+                          }}
+                          className={`px-3 py-1 rounded-lg transition-colors ${
+                            selectedToppings.find(t => t.id === topping.id)
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {selectedToppings.find(t => t.id === topping.id) ? '✓' : '+'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Total Price */}
+              <div className="border-t pt-4 mb-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">ราคารวม:</span>
+                  <span className="text-xl font-bold text-thai-orange">
+                    ฿{selectedMenuItem.price + selectedToppings.reduce((sum, t) => sum + t.price, 0)}
+                  </span>
+                </div>
+                {selectedToppings.length > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    {selectedMenuItem.name} + {selectedToppings.map(t => t.name).join(', ')}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowAddToCartModal(false)
+                    setSelectedMenuItem(null)
+                    setSelectedToppings([])
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={() => confirmAddToCart(selectedMenuItem, selectedToppings)}
+                  className="flex-1 px-4 py-3 bg-thai-orange text-white rounded-lg hover:bg-thai-orange-dark transition-colors flex items-center justify-center"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  เพิ่มลงตะกร้า
+                </button>
               </div>
             </div>
           </div>
