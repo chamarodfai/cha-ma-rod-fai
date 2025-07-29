@@ -82,9 +82,12 @@ function App() {
 
   // คำนวณข้อมูล Analytics เมื่อ orders เปลี่ยน
   useEffect(() => {
+    console.log('🔄 Orders changed, recalculating analytics...')
+    console.log('📊 Current orders count:', orders.length)
+    console.log('🍃 Current menu items count:', menuItems.length)
     calculateAnalytics()
     calculateDailySales()
-  }, [orders])
+  }, [orders, menuItems])
 
   const fetchMenuItems = async () => {
     try {
@@ -129,13 +132,18 @@ function App() {
 
   const fetchOrders = async () => {
     try {
+      console.log('🌐 Fetching orders from API...')
       const response = await fetch('/api/orders')
       if (response.ok) {
         const data = await response.json()
+        console.log('📦 Orders received from API:', data.length, 'orders')
+        console.log('📋 Sample order structure:', data[0])
         setOrders(data)
+      } else {
+        console.warn('⚠️ API response not OK:', response.status)
       }
     } catch (error) {
-      console.error('Error fetching orders:', error)
+      console.error('❌ Error fetching orders:', error)
     }
   }
 
@@ -163,25 +171,47 @@ function App() {
       popularItems: []
     }
 
-    orders.forEach(order => {
+    console.log('🔍 Calculating analytics with orders:', orders.length)
+
+    orders.forEach((order, index) => {
       try {
+        console.log(`📊 Processing order ${index + 1}:`, order)
+        
         const date = new Date(order.created_at || order.timestamp || new Date())
         const dateStr = date.toLocaleDateString('th-TH')
         
-        // ป้องกัน NaN ในการคำนวณ revenue
-        const revenue = parseFloat(order.total || order.total_amount || 0) || 0
+        // ป้องกัน NaN ในการคำนวณ revenue - ใช้ final_total หรือ total
+        const revenue = parseFloat(order.final_total || order.total || order.total_amount || 0) || 0
+        console.log(`💰 Revenue for order ${index + 1}:`, revenue)
         
-        // ป้องกัน NaN ในการคำนวณ profit
+        // คำนวณ profit โดยใช้ cost จาก menuItems ที่มีอยู่
         let profit = 0
         if (order.items && Array.isArray(order.items)) {
           profit = order.items.reduce((sum, item) => {
-            const itemPrice = parseFloat(item.price || 0) || 0
-            const itemCost = parseFloat(item.cost || 0) || 0
-            const quantity = parseInt(item.quantity || 0) || 0
-            return sum + ((itemPrice - itemCost) * quantity)
+            // หา cost จาก menuItems ที่มีอยู่ในระบบ
+            const menuItem = menuItems.find(m => m.name === item.name || m.id === item.id)
+            const itemPrice = parseFloat(item.price || item.originalPrice || 0) || 0
+            const itemCost = parseFloat(item.cost || menuItem?.cost || itemPrice * 0.6) || 0 // ใช้ 60% ของราคาขายเป็น cost เริ่มต้น
+            const quantity = parseInt(item.quantity || 1) || 1
+            
+            console.log(`🧮 Item: ${item.name}, Price: ${itemPrice}, Cost: ${itemCost}, Qty: ${quantity}`)
+            
+            // รวม topping cost
+            let toppingCost = 0
+            if (item.toppings && Array.isArray(item.toppings)) {
+              toppingCost = item.toppings.reduce((toppingSum, topping) => {
+                const toppingMenuItem = menuItems.find(m => m.name === topping.name || m.id === topping.id)
+                const toppingPrice = parseFloat(topping.price || 0) || 0
+                const toppingCostValue = parseFloat(topping.cost || toppingMenuItem?.cost || toppingPrice * 0.6) || 0
+                return toppingSum + toppingCostValue
+              }, 0)
+            }
+            
+            return sum + ((itemPrice - itemCost - toppingCost) * quantity)
           }, 0)
         }
         profit = parseFloat(profit) || 0
+        console.log(`📈 Profit for order ${index + 1}:`, profit)
 
         // รายวัน
         if (!analytics.daily[dateStr]) {
@@ -194,7 +224,7 @@ function App() {
         analytics.totalRevenue += revenue
         analytics.totalProfit += profit
       } catch (error) {
-        console.error('Error calculating analytics for order:', order, error)
+        console.error('❌ Error calculating analytics for order:', order, error)
       }
     })
 
@@ -240,8 +270,11 @@ function App() {
       }
     })
 
+    console.log('📅 Today orders:', todayOrders.length)
+
     const todayRevenue = todayOrders.reduce((sum, order) => {
-      const revenue = parseFloat(order.total || order.total_amount || 0) || 0
+      const revenue = parseFloat(order.final_total || order.total || order.total_amount || 0) || 0
+      console.log('💰 Order revenue:', revenue)
       return sum + revenue
     }, 0)
     
@@ -250,10 +283,24 @@ function App() {
       try {
         if (order.items && Array.isArray(order.items)) {
           orderProfit = order.items.reduce((itemSum, item) => {
-            const itemPrice = parseFloat(item.price || 0) || 0
-            const itemCost = parseFloat(item.cost || 0) || 0
-            const quantity = parseInt(item.quantity || 0) || 0
-            return itemSum + ((itemPrice - itemCost) * quantity)
+            // หา cost จาก menuItems ที่มีอยู่ในระบบ
+            const menuItem = menuItems.find(m => m.name === item.name || m.id === item.id)
+            const itemPrice = parseFloat(item.price || item.originalPrice || 0) || 0
+            const itemCost = parseFloat(item.cost || menuItem?.cost || itemPrice * 0.6) || 0 // ใช้ 60% ของราคาขายเป็น cost เริ่มต้น
+            const quantity = parseInt(item.quantity || 1) || 1
+            
+            // รวม topping cost
+            let toppingCost = 0
+            if (item.toppings && Array.isArray(item.toppings)) {
+              toppingCost = item.toppings.reduce((toppingSum, topping) => {
+                const toppingMenuItem = menuItems.find(m => m.name === topping.name || m.id === topping.id)
+                const toppingPrice = parseFloat(topping.price || 0) || 0
+                const toppingCostValue = parseFloat(topping.cost || toppingMenuItem?.cost || toppingPrice * 0.6) || 0
+                return toppingSum + toppingCostValue
+              }, 0)
+            }
+            
+            return itemSum + ((itemPrice - itemCost - toppingCost) * quantity)
           }, 0)
         }
       } catch (error) {
@@ -261,6 +308,8 @@ function App() {
       }
       return sum + (parseFloat(orderProfit) || 0)
     }, 0)
+
+    console.log('📊 Daily sales calculated:', { todayRevenue, todayProfit, todayOrders: todayOrders.length })
 
     setDailySales({
       today: parseFloat(todayRevenue) || 0,
