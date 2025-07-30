@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบ API - Cha Ma Rod Fai POS</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            min-height: 100vh;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        button { 
+            background: #ff6b35; 
+            color: white; 
+            border: none; 
+            padding: 15px 25px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #e55a2b; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        .log-area { 
+            background: #f8f9fa; 
+            border: 1px solid #dee2e6; 
+            border-radius: 5px; 
+            padding: 15px; 
+            margin: 15px 0; 
+            white-space: pre-wrap; 
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #ff6b35;">🧪 ทดสอบ API ระบบ POS</h1>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <button onclick="testAPI()">🌐 ทดสอบ API สั่งซื้อ</button>
+            <button onclick="testReceiptOnly()">🧾 ทดสอบใบเสร็จ</button>
+            <button onclick="clearLogs()">🗑️ ล้างล็อก</button>
+        </div>
+        
+        <div id="result" style="margin: 20px 0; padding: 15px; border-radius: 8px; background: #f8f9fa;"></div>
+        
+        <h3>📋 Log การทำงาน:</h3>
+        <div id="logs" class="log-area"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString('th-TH');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            logs.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('result').innerHTML = '';
+        }
+
+        async function testAPI() {
+            log('🌐 เริ่มทดสอบ API การสั่งซื้อ...', 'info');
+            
+            const testOrder = {
+                order_id: `TEST-${Date.now()}`,
+                customer_name: 'ลูกค้าทดสอบ',
+                items: [
+                    { name: 'ชาไทยร้อน', price: 25, quantity: 2, cost: 15 },
+                    { name: 'เพิ่มไข่มุก', price: 10, quantity: 1, cost: 5 }
+                ],
+                total: 60,
+                final_total: 60,
+                discount_amount: 0,
+                status: 'completed',
+                order_type: 'dine-in',
+                payment_method: 'cash'
+            };
+
+            try {
+                log('📤 ส่งข้อมูลไปยัง /api/orders...', 'info');
+                log(`📦 ข้อมูล: ${JSON.stringify(testOrder, null, 2)}`, 'info');
+                
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testOrder)
+                });
+
+                log(`📡 Response Status: ${response.status} ${response.statusText}`, 'info');
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log('✅ API สำเร็จ!', 'success');
+                    log(`📄 ผลลัพธ์: ${JSON.stringify(result, null, 2)}`, 'success');
+                    
+                    document.getElementById('result').innerHTML = `
+                        <div style="color: #28a745;">
+                            <h4>✅ การทดสอบ API สำเร็จ!</h4>
+                            <p><strong>Order ID:</strong> ${result.order_id}</p>
+                            <p><strong>ยอดรวม:</strong> ฿${result.total}</p>
+                            <p><strong>สถานะ:</strong> ${result.status}</p>
+                            <p><strong>เวลา:</strong> ${new Date(result.created_at).toLocaleString('th-TH')}</p>
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ API Error: ${errorText}`, 'error');
+                    
+                    document.getElementById('result').innerHTML = `
+                        <div style="color: #dc3545;">
+                            <h4>❌ การทดสอบ API ล้มเหลว</h4>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Error:</strong> ${errorText}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                log(`❌ Network Error: ${error.message}`, 'error');
+                
+                document.getElementById('result').innerHTML = `
+                    <div style="color: #dc3545;">
+                        <h4>❌ เกิดข้อผิดพลาดในการเชื่อมต่อ</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function testReceiptOnly() {
+            log('🧾 ทดสอบการแสดงใบเสร็จ...', 'info');
+            
+            // เปลี่ยนไปยังหน้าหลักพร้อมข้อมูลทดสอบ
+            const testData = {
+                order_id: 'TEST-RECEIPT-001',
+                items: [
+                    { name: 'ชาไทยร้อน', price: 25, quantity: 2 },
+                    { name: 'เพิ่มไข่มุก', price: 10, quantity: 1 }
+                ],
+                total: 60,
+                created_at: new Date().toISOString()
+            };
+            
+            // เก็บข้อมูลใน localStorage และเปลี่ยนหน้า
+            localStorage.setItem('testReceipt', JSON.stringify(testData));
+            window.location.href = '/?showTestReceipt=true';
+        }
+
+        // เริ่มต้น
+        log('🚀 หน้าทดสอบพร้อมใช้งาน', 'success');
+        log('💡 คลิกปุ่มด้านบนเพื่อทดสอบฟังก์ชันต่างๆ', 'info');
+    </script>
+</body>
+</html>

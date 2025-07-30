@@ -137,6 +137,26 @@ function App() {
     fetchMenuItems()
     fetchOrders()
     fetchPromotions()
+    
+    // ตรวจสอบ URL parameters สำหรับการทดสอบ
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('showTestReceipt') === 'true') {
+      console.log('🧪 Detected test receipt request from URL')
+      const testData = localStorage.getItem('testReceipt')
+      if (testData) {
+        try {
+          const parsedData = JSON.parse(testData)
+          console.log('📄 Loading test receipt data:', parsedData)
+          setReceiptData(parsedData)
+          setShowReceipt(true)
+          localStorage.removeItem('testReceipt')
+          // ล้าง URL parameter
+          window.history.replaceState({}, document.title, window.location.pathname)
+        } catch (error) {
+          console.error('Error parsing test receipt data:', error)
+        }
+      }
+    }
   }, [])
 
   // คำนวณข้อมูล Analytics เมื่อ orders เปลี่ยน
@@ -575,7 +595,7 @@ function App() {
         console.log('📱 Using local fallback order:', newOrder)
       }
       
-      // อัพเดทข้อมูลในแอพ
+      // อัพเดทข้อมูลในแอพทันที
       console.log('🔄 Updating app state with new order:', newOrder)
       setOrders(prevOrders => {
         const updatedOrders = [...prevOrders, newOrder]
@@ -590,15 +610,10 @@ function App() {
       setCart([])
       setSelectedPromotion(null)
       
-      // แสดง Receipt Modal หลังจาก state อัพเดท
-      console.log('⏰ Setting timeout to show receipt...')
-      setTimeout(() => {
-        console.log('🎭 About to show receipt modal...')
-        console.log('📊 Current receiptData state:', receiptData)
-        console.log('📊 New order data:', newOrder)
-        setShowReceipt(true)
-        console.log('✅ Receipt modal state set to true')
-      }, 200)
+      // แสดง Receipt Modal ทันที
+      console.log('🎭 Showing receipt modal immediately...')
+      setShowReceipt(true)
+      console.log('✅ Receipt modal state set to true')
       
       console.log('✅ Checkout completed! Receipt should show now.')
       
@@ -624,13 +639,10 @@ function App() {
       setCart([])
       setSelectedPromotion(null)
       
-      // แสดง Receipt Modal หลังจาก state อัพเดท
-      console.log('⏰ Setting timeout to show receipt (fallback)...')
-      setTimeout(() => {
-        console.log('🎭 About to show receipt modal (fallback)...')
-        setShowReceipt(true)
-        console.log('✅ Fallback receipt modal state set to true')
-      }, 200)
+      // แสดง Receipt Modal ทันที
+      console.log('🎭 Showing receipt modal immediately (fallback)...')
+      setShowReceipt(true)
+      console.log('✅ Fallback receipt modal state set to true')
       
       console.log('💾 Using error fallback, receipt should show')
     }
@@ -1323,6 +1335,27 @@ function App() {
               <TrendingUp className="w-4 h-4" />
               <span className="hidden md:inline text-sm lg:text-base">วิเคราะห์ยอดขาย</span>
             </button>
+            <button
+              onClick={() => {
+                console.log('🧪 Test button clicked - showing mock receipt')
+                const mockReceipt = {
+                  id: 999,
+                  order_id: 'TEST-RECEIPT',
+                  customer_name: 'ทดสอบ',
+                  items: [{ name: 'ชาไทยร้อน', price: 25, quantity: 1 }],
+                  total: 25,
+                  final_total: 25,
+                  created_at: new Date().toISOString()
+                }
+                setReceiptData(mockReceipt)
+                setShowReceipt(true)
+                console.log('🎭 Test receipt should be showing now')
+              }}
+              className="bg-yellow-500/80 hover:bg-yellow-600/80 px-2 sm:px-3 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors whitespace-nowrap"
+            >
+              🧪
+              <span className="hidden md:inline text-sm lg:text-base">ทดสอบ</span>
+            </button>
             <div className="bg-white/20 px-2 sm:px-3 py-1 rounded-full whitespace-nowrap">
               <span className="hidden sm:inline text-sm lg:text-base">วันที่: </span>
               <span className="text-sm lg:text-base">{new Date().toLocaleDateString('th-TH')}</span>
@@ -1913,12 +1946,17 @@ function App() {
         return null
       })()}
       {showReceipt && receiptData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          style={{ display: 'flex', zIndex: 9999 }}
+        >
           {(() => {
             console.log('✅ Receipt Modal is rendering!')
             return null
           })()}
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-slideIn" style={{
+          <div 
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+            style={{
             position: 'fixed',
             top: '50%',
             left: '50%',
