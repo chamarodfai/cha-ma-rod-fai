@@ -576,40 +576,61 @@ function App() {
       }
       
       // อัพเดทข้อมูลในแอพ
-      setOrders(prevOrders => [...prevOrders, newOrder])
+      console.log('🔄 Updating app state with new order:', newOrder)
+      setOrders(prevOrders => {
+        const updatedOrders = [...prevOrders, newOrder]
+        console.log('📋 Orders updated, total orders:', updatedOrders.length)
+        return updatedOrders
+      })
+      
+      console.log('📝 Setting receipt data:', newOrder)
       setReceiptData(newOrder)
       
-      // แสดง Receipt Modal หลังจาก state อัพเดท
-      setTimeout(() => {
-        setShowReceipt(true)
-        console.log('✅ Receipt modal should be visible now')
-        console.log('📱 Receipt data set:', newOrder)
-      }, 100)
-      
+      // ล้างตะกร้าและโปรโมชั่น
       setCart([])
       setSelectedPromotion(null)
+      
+      // แสดง Receipt Modal หลังจาก state อัพเดท
+      console.log('⏰ Setting timeout to show receipt...')
+      setTimeout(() => {
+        console.log('🎭 About to show receipt modal...')
+        console.log('📊 Current receiptData state:', receiptData)
+        console.log('📊 New order data:', newOrder)
+        setShowReceipt(true)
+        console.log('✅ Receipt modal state set to true')
+      }, 200)
       
       console.log('✅ Checkout completed! Receipt should show now.')
       
     } catch (error) {
-      console.error('❌ Error creating order:', error)
+      console.log('❌ Error creating order:', error)
       // สำรองข้อมูลเมื่อเกิดข้อผิดพลาด
       const fallbackOrder = {
         id: Date.now(),
         ...orderData
       }
       
-      setOrders(prevOrders => [...prevOrders, fallbackOrder])
+      console.log('🔄 Updating app state with fallback order:', fallbackOrder)
+      setOrders(prevOrders => {
+        const updatedOrders = [...prevOrders, fallbackOrder]
+        console.log('📋 Orders updated (fallback), total orders:', updatedOrders.length)
+        return updatedOrders
+      })
+      
+      console.log('📝 Setting receipt data (fallback):', fallbackOrder)
       setReceiptData(fallbackOrder)
       
-      // แสดง Receipt Modal หลังจาก state อัพเดท
-      setTimeout(() => {
-        setShowReceipt(true)
-        console.log('✅ Fallback receipt modal should be visible now')
-      }, 100)
-      
+      // ล้างตะกร้าและโปรโมชั่น
       setCart([])
       setSelectedPromotion(null)
+      
+      // แสดง Receipt Modal หลังจาก state อัพเดท
+      console.log('⏰ Setting timeout to show receipt (fallback)...')
+      setTimeout(() => {
+        console.log('🎭 About to show receipt modal (fallback)...')
+        setShowReceipt(true)
+        console.log('✅ Fallback receipt modal state set to true')
+      }, 200)
       
       console.log('💾 Using error fallback, receipt should show')
     }
@@ -1883,8 +1904,20 @@ function App() {
       )}
 
       {/* Receipt Modal */}
+      {(() => {
+        console.log('🎭 Receipt Modal render check:', {
+          showReceipt: showReceipt,
+          receiptData: receiptData,
+          shouldShow: showReceipt && receiptData
+        })
+        return null
+      })()}
       {showReceipt && receiptData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          {(() => {
+            console.log('✅ Receipt Modal is rendering!')
+            return null
+          })()}
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-slideIn" style={{
             position: 'fixed',
             top: '50%',
